@@ -1,0 +1,1928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nekta - Kothagudem</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        body { background-color: #f3f4f6; font-family: 'Segoe UI', sans-serif; }
+        .app-container { max-width: 480px; margin: 0 auto; background: #fafafa; min-height: 100vh; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+        .hide { display: none !important; }
+        .sticky-bottom-nav { position: fixed; bottom: 0; width: 100%; max-width: 480px; z-index: 50; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); backdrop-filter: blur(20px); border-top: 1px solid rgba(16, 185, 129, 0.1); padding: 4px 0 8px 0; box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.08); border-top-left-radius: 28px; border-top-right-radius: 28px; }
+        .sticky-mini-cart { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); width: auto; max-width: 420px; box-sizing: border-box; z-index: 40; }
+        .mini-cart-compact { padding: 0.45rem 0.75rem; border-radius: 9999px; font-size: 0.85rem; box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+        .mini-cart-compact .count { font-weight: 700; font-size: 0.9rem; }
+        .mini-cart-compact .total { font-weight: 800; margin-left: 0.5rem; }
+        /* Header cart button (moved from floating) */
+        .header-cart { display: inline-flex; align-items: center; justify-content: center; }
+        .header-cart .floating-btn { width: 44px; height: 44px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 18px rgba(16,185,129,0.12); cursor: pointer; }
+        .header-cart .floating-btn:hover { transform: translateY(-2px); transition: transform 120ms ease; }
+        .header-cart .badge { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .nav-item { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); transform: scale(1); position: relative; }
+        .nav-item.active { color: #10B981; transform: scale(1.05); }
+        .nav-item:hover { transform: scale(1.02); }
+        .nav-icon { width: 38px; height: 38px; margin-bottom: 1px; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border: 2px solid transparent; }
+        .nav-item.active .nav-icon { transform: translateY(-3px); border-color: #10B981; box-shadow: 0 8px 25px rgba(16, 185, 129, 0.25); }
+        .nav-item span { font-size: 9px; font-weight: 600; letter-spacing: 0.5px; } 
+        #view-cart { padding-bottom: 8.5rem; }
+        .order-btn:hover { background-color: #10B981; }
+        .order-btn:active { background-color: #059669; }
+        .image-placeholder { background-color: #e5ffe5; border: 1px dashed #a7f3d0; color: #10B981; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; text-align: center;}
+        /* Error overlay */
+        .error-overlay { position: fixed; inset: 12px; z-index: 9999; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; }
+        .error-box { background: white; color: #111827; max-width: 720px; width: 100%; padding: 16px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+        .error-box pre { max-height: 300px; overflow: auto; background: #111827; color: #f8fafc; padding: 12px; border-radius: 8px; }
+        
+        /* Payment Modal Styles */
+        .payment-option input[type="radio"]:checked + .payment-card {
+            border-color: #10b981;
+            background-color: #f0fdf4;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+        }
+        
+        .payment-option input[type="radio"]:checked + .payment-card .radio-indicator {
+            border-color: #10b981;
+        }
+        
+        .payment-option input[type="radio"]:checked + .payment-card .radio-indicator div {
+            opacity: 1;
+            background-color: #10b981;
+        }
+        
+        #payment-modal.show #payment-modal-content {
+            transform: scale(1);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body onload="checkSavedDetails()">
+
+<div class="app-container relative">
+    
+    <!-- DETAILS VIEW (First Time User) -->
+    <div id="view-details" class="absolute inset-0 z-50 bg-green-800 flex flex-col items-center justify-center p-6 text-white">
+        <div class="text-6xl mb-4">👋</div>
+        <h1 class="text-3xl font-bold mb-2">Welcome to Nekta</h1>
+        <p class="text-green-200 mb-8 text-center">Enter your details once for express checkout!</p>
+        <div class="bg-white p-6 rounded-2xl w-full text-gray-800 shadow-xl">
+            <h2 class="text-xl font-bold mb-4 text-center">Your Delivery Details</h2>
+            <input type="text" id="initialName" placeholder="Your Full Name" class="w-full border p-3 rounded-lg mb-3 focus:outline-none focus:border-green-500">
+            <input type="tel" id="initialPhone" placeholder="Phone Number (Required)" class="w-full border p-3 rounded-lg mb-3 focus:outline-none focus:border-green-500">
+            <textarea id="initialAddress" placeholder="Full Address (House No, Area, Kothagudem)" rows="3" class="w-full border p-3 rounded-lg mb-4 focus:outline-none focus:border-green-500"></textarea>
+            <button onclick="saveAndStartShopping()" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition">START SHOPPING NOW</button>
+            <p id="detailsError" class="text-red-500 text-center mt-2 text-sm hide">Please fill in all fields (Phone must be at least 10 digits).</p>
+        </div>
+    </div>
+    
+    <!-- HOME VIEW -->
+    <div id="view-home" class="hide pb-32 pt-56">
+        <div id="floatingHeader" class="p-2 fixed top-0 left-0 right-0 z-30 shadow-lg max-w-[480px] mx-auto transition-transform duration-300 rounded-b-3xl bg-green-700">
+            <!-- Top Row: Location & Profile -->
+            <div class="flex justify-between items-center mb-2">
+                <div class="flex items-center gap-2">
+                    <div class="bg-white bg-opacity-20 p-1 rounded-full">
+                        <i class="fas fa-map-marker-alt text-white text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-white font-bold text-sm">Deliver to</p>
+                        <p class="text-green-200 text-xs flex items-center gap-1">
+                            Kothagudem, 507101 <i class="fas fa-chevron-down text-xs"></i>
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <!-- Cart -->
+                    <div id="mini-cart-bar" onclick="showCart()" class="relative">
+                        <div class="bg-white bg-opacity-20 p-2 rounded-full relative">
+                            <i class="fas fa-shopping-bag text-white text-lg"></i>
+                            <span id="cartCountBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center hide">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Brand & Delivery Promise -->
+            <div class="flex justify-between items-center mb-3">
+                <div>
+                    <h1 onclick="adminTapCounter()" class="text-white font-bold text-2xl cursor-pointer">Nekta</h1>
+                    <p class="text-green-200 text-xs font-medium">Fresh groceries in 30 mins ⚡</p>
+                </div>
+            </div>
+            <!-- Search Bar -->
+            <div class="relative mb-3">
+                <i class="fas fa-search absolute left-4 top-3.5 text-gray-400"></i>
+                <input type="text" id="searchInput" onkeyup="filterProducts()" onfocus="showSearchSuggestions()" onblur="setTimeout(() => document.getElementById('searchSuggestions').classList.add('hide'), 200)" placeholder="Search for vegetables, fruits, dairy..." class="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none shadow-sm text-sm">
+                <div id="searchSuggestions" class="hide absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl mt-1 shadow-lg z-50 max-h-48 overflow-y-auto"></div>
+            </div>
+            
+            <!-- Quick Access Buttons -->
+            <div class="flex gap-2 overflow-x-auto scrollbar-hide">
+                <button onclick="showFavorites()" class="bg-white bg-opacity-20 text-white px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap flex items-center gap-1 backdrop-blur-sm">
+                    <i class="fas fa-heart"></i> Favorites (<span id="favCount">0</span>)
+                </button>
+                <button onclick="showRecentOrders()" class="bg-white bg-opacity-20 text-white px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap flex items-center gap-1 backdrop-blur-sm">
+                    <i class="fas fa-history"></i> Recent
+                </button>
+                <button onclick="showShoppingLists()" class="bg-white bg-opacity-20 text-white px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap flex items-center gap-1 backdrop-blur-sm">
+                    <i class="fas fa-list"></i> Lists
+                </button>
+            </div>
+            
+        </div>
+
+        <!-- CATEGORY TABS (Scrollable) -->
+        <div class="px-4 mb-4 flex gap-2 overflow-x-auto pb-2 pt-3 scrollbar-hide border-b border-gray-200 bg-white">
+            <button data-category="ALL" onclick="setActiveCategory(this, 'ALL')" class="category-btn bg-green-600 text-white px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1">🛒 All Items</button>
+            <button data-category="STAPLES" onclick="setActiveCategory(this, 'STAPLES')" class="category-btn bg-gray-200 text-gray-600 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1">📦 Daily Essentials</button>
+            <button data-category="VEGETABLES" onclick="setActiveCategory(this, 'VEGETABLES')" class="category-btn bg-gray-200 text-gray-600 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1">🥕 Fresh Vegetables</button>
+            <button data-category="LEAFY" onclick="setActiveCategory(this, 'LEAFY')" class="category-btn bg-gray-200 text-gray-600 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1">🥬 Leafy Greens</button>
+            <button data-category="FRUITS" onclick="setActiveCategory(this, 'FRUITS')" class="category-btn bg-gray-200 text-gray-600 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1">🍎 Fresh Fruits</button>
+            <button data-category="ICECREAM" onclick="setActiveCategory(this, 'ICECREAM')" class="category-btn bg-gray-200 text-gray-600 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1">🍦 Ice Creams</button>
+            <button data-category="DRINKS" onclick="setActiveCategory(this, 'DRINKS')" class="category-btn bg-gray-200 text-gray-600 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1">🥤 Cool Drinks</button>
+            <button data-category="PANSHOP" onclick="setActiveCategory(this, 'PANSHOP')" class="category-btn bg-gray-200 text-gray-600 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1">🚬 Pan Shop</button>
+            <button data-category="NONVEG" onclick="setActiveCategory(this, 'NONVEG')" class="category-btn bg-gray-200 text-gray-600 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1">🍗 Meat & Eggs</button>
+            <button data-category="BATTERS" onclick="setActiveCategory(this, 'BATTERS')" class="category-btn bg-gray-200 text-gray-600 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1">🥞 Ready to Cook</button>
+            <button data-category="GRAINS" onclick="setActiveCategory(this, 'GRAINS')" class="category-btn bg-gray-200 text-gray-600 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1">🌾 Rice & Grains</button>
+            <button data-category="POWDERS" onclick="setActiveCategory(this, 'POWDERS')" class="category-btn bg-gray-200 text-gray-600 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1">🌶️ Spices & Masala</button>
+            <button data-category="DAIRY" onclick="setActiveCategory(this, 'DAIRY')" class="category-btn bg-gray-200 text-gray-600 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1">🥛 Milk & Dairy</button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 p-4" id="product-grid"></div>
+    </div>
+
+    <!-- ABOUT VIEW -->
+    <div id="view-about" class="hide pb-32">
+        <div class="bg-green-700 text-white p-6 shadow-md">
+            <h2 class="text-2xl font-bold mb-1">Why Choose Nekta?</h2>
+            <p class="text-green-100 text-sm">Your trusted partner for fresh groceries & daily essentials.</p>
+        </div>
+        <div class="p-5 space-y-6">
+            <!-- Time Savings -->
+            <div class="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                <h3 class="text-lg font-bold text-blue-800 mb-2 flex items-center gap-2">
+                    <i class="fas fa-clock text-blue-600"></i> Save Your Precious Time
+                </h3>
+                <p class="text-gray-700 text-sm">No more waiting in long queues or traveling to multiple shops. Order from home and get everything delivered to your doorstep in minutes!</p>
+            </div>
+
+            <!-- Fresh & Fast -->
+            <div class="bg-green-50 p-4 rounded-xl border border-green-200">
+                <h3 class="text-lg font-bold text-green-800 mb-2 flex items-center gap-2">
+                    <i class="fas fa-leaf text-green-600"></i> Fresh & Fast Delivery
+                </h3>
+                <p class="text-gray-700 text-sm">Farm-fresh vegetables, quality groceries, and daily essentials delivered within 30-60 minutes. We ensure freshness in every order!</p>
+            </div>
+
+            <!-- Authentic Products -->
+            <div class="bg-orange-50 p-4 rounded-xl border border-orange-200">
+                <h3 class="text-lg font-bold text-orange-800 mb-2 flex items-center gap-2">
+                    <i class="fas fa-shield-alt text-orange-600"></i> 100% Authentic Products
+                </h3>
+                <p class="text-gray-700 text-sm">Say goodbye to fake or expired products! We source directly from trusted suppliers and guarantee genuine, quality items every time.</p>
+            </div>
+
+            <!-- Convenience -->
+            <div class="bg-purple-50 p-4 rounded-xl border border-purple-200">
+                <h3 class="text-lg font-bold text-purple-800 mb-2 flex items-center gap-2">
+                    <i class="fas fa-mobile-alt text-purple-600"></i> Ultimate Convenience
+                </h3>
+                <p class="text-gray-700 text-sm">Order anytime, anywhere! Easy WhatsApp ordering, multiple payment options, and hassle-free delivery right to your home.</p>
+            </div>
+
+            <!-- Service Areas -->
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    <i class="fas fa-map-marker-alt text-red-500"></i> We Deliver To
+                </h3>
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                    <div class="flex items-center gap-2"><i class="fas fa-check-circle text-green-500"></i> City Center Areas</div>
+                    <div class="flex items-center gap-2"><i class="fas fa-check-circle text-green-500"></i> Residential Colonies</div>
+                    <div class="flex items-center gap-2"><i class="fas fa-check-circle text-green-500"></i> Commercial Districts</div>
+                    <div class="flex items-center gap-2"><i class="fas fa-check-circle text-green-500"></i> Nearby Localities</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTACT VIEW -->
+    <div id="view-contact" class="hide pb-32">
+        <div class="bg-green-700 text-white p-6 shadow-md">
+            <h2 class="text-2xl font-bold mb-1">Get In Touch</h2>
+            <p class="text-green-100 text-sm">We are here to help you quickly.</p>
+        </div>
+        <div class="p-5 space-y-5">
+            <div class="bg-white p-4 border border-green-200 rounded-xl shadow-sm flex items-center gap-4">
+                <i class="fab fa-whatsapp text-4xl text-green-500"></i>
+                <div>
+                    <h4 class="font-bold text-lg">WhatsApp Us</h4>
+                    <a href="https://wa.me/917702907454" target="_blank" class="text-green-600 underline">Chat Now</a>
+                </div>
+            </div>
+             <div class="bg-white p-4 border border-gray-200 rounded-xl shadow-sm flex items-center gap-4">
+                <i class="fas fa-phone-alt text-4xl text-blue-500"></i>
+                <div>
+                    <h4 class="font-bold text-lg">Call Us</h4>
+                    <a href="tel:+917702907454" class="text-blue-600 underline">+91 77029 07454</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN PANEL -->
+    <div id="view-admin" class="hide pb-32">
+        <div class="bg-green-700 text-white p-6 shadow-md">
+            <h2 class="text-2xl font-bold mb-1">Admin Panel</h2>
+            <p class="text-green-200 text-sm">Manage orders and delivery status</p>
+        </div>
+        <div class="p-5">
+            <!-- Admin Login -->
+            <div id="admin-login" class="bg-white p-6 rounded-xl shadow-sm">
+                <h3 class="text-lg font-bold mb-4">Admin Access</h3>
+                <input type="password" id="admin-password" placeholder="Enter admin password" class="w-full p-3 border border-gray-300 rounded-lg mb-4">
+                <button onclick="checkAdminLogin()" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition">Login</button>
+            </div>
+            
+            <!-- Admin Dashboard -->
+            <div id="admin-dashboard" class="hide space-y-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm">
+                    <h3 class="text-lg font-bold mb-4">Recent Orders</h3>
+                    <div id="admin-orders-list"></div>
+                </div>
+                
+                <div class="bg-white p-4 rounded-xl shadow-sm">
+                    <h3 class="text-lg font-bold mb-4">Update Order Status</h3>
+                    <select id="order-select" class="w-full p-3 border border-gray-300 rounded-lg mb-3">
+                        <option value="">Select Order</option>
+                    </select>
+                    <select id="status-select" class="w-full p-3 border border-gray-300 rounded-lg mb-3">
+                        <option value="received">📦 Order Received</option>
+                        <option value="preparing">👨‍🍳 Preparing</option>
+                        <option value="delivering">🚚 Out for Delivery</option>
+                        <option value="delivered">✅ Delivered</option>
+                    </select>
+                    <button onclick="updateOrderStatus()" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold">Update Status</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CART VIEW -->
+    <div id="view-cart" class="hide min-h-screen bg-gray-50"> 
+        <div class="bg-white p-4 shadow-sm flex items-center justify-between sticky top-0 z-30">
+            <div class="flex items-center gap-4">
+                <button onclick="showCurrentView('home')" class="text-gray-700 hover:text-green-600"><i class="fas fa-arrow-left text-xl"></i></button>
+                <h2 class="font-bold text-xl">Your Cart</h2>
+            </div>
+            <button onclick="clearAllCart()" class="text-red-500 text-sm font-medium hover:text-red-700 underline">
+                Clear All
+            </button>
+        </div>
+
+        <div class="p-4">
+            <div id="cart-items-container" class="space-y-4 mb-6"></div>
+
+            <div class="bg-green-50 p-4 rounded-xl shadow-sm mb-6 border border-green-200">
+                <h3 class="font-bold mb-2 text-green-800 flex items-center gap-2"><i class="fas fa-map-marked-alt"></i> Deliver To:</h3>
+                <p class="text-gray-700 font-semibold" id="cartCustName"></p>
+                <p class="text-sm text-gray-600" id="cartCustAddress"></p>
+                <p class="text-sm text-gray-600" id="cartCustPhone"></p>
+                <button onclick="showCurrentView('details')" class="mt-2 text-xs text-blue-500 underline hover:text-blue-700">Change Details</button>
+            </div>
+            
+            <!-- Delivery Time Slot -->
+            <div class="bg-blue-50 p-4 rounded-xl shadow-sm mb-6 border border-blue-200">
+                <h3 class="font-bold mb-2 text-blue-800 flex items-center gap-2"><i class="fas fa-clock"></i> Delivery Time:</h3>
+                <select id="deliveryTimeSlot" class="w-full p-2 border border-blue-300 rounded-lg text-sm">
+                    <option value="asap">ASAP (30-60 mins)</option>
+                    <option value="morning">Morning (8 AM - 12 PM)</option>
+                    <option value="afternoon">Afternoon (12 PM - 4 PM)</option>
+                    <option value="evening">Evening (4 PM - 8 PM)</option>
+                </select>
+            </div>
+            
+            <!-- Order Status Tracker -->
+            <div id="orderStatusTracker" class="hide bg-orange-50 p-4 rounded-xl shadow-sm mb-6 border border-orange-200">
+                <h3 class="font-bold mb-3 text-orange-800 flex items-center gap-2"><i class="fas fa-truck"></i> Order Status:</h3>
+                <div class="flex items-center justify-between text-xs">
+                    <div class="flex flex-col items-center">
+                        <div id="status1" class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white mb-1">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <span class="text-green-600 font-bold">Received</span>
+                    </div>
+                    <div class="flex-1 h-1 bg-gray-300 mx-2"></div>
+                    <div class="flex flex-col items-center">
+                        <div id="status2" class="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center text-white mb-1">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <span class="text-yellow-600 font-bold">Preparing</span>
+                    </div>
+                    <div class="flex-1 h-1 bg-gray-300 mx-2"></div>
+                    <div class="flex flex-col items-center">
+                        <div id="status3" class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-gray-500 mb-1">
+                            <i class="fas fa-truck"></i>
+                        </div>
+                        <span class="text-gray-500">Delivering</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm mb-6">
+                <h3 class="font-bold mb-3 text-gray-700">Bill Details</h3>
+                <div class="flex justify-between text-sm mb-2"><span>Item Total</span><span id="bill-subtotal">₹0</span></div>
+                <div class="flex justify-between text-sm mb-2"><span>Delivery Fee</span><span class="text-green-600">₹20</span></div>
+                <div class="border-t pt-2 mt-2 flex justify-between font-bold text-lg"><span>To Pay</span><span id="bill-total">₹0</span></div>
+                <p id="minOrderNote" class="text-sm text-yellow-700 mt-2">Minimum order ₹100 required for delivery.</p>
+            </div>
+        </div>
+
+        <div id="confirmOrderSection" class="hide fixed bottom-[4.5rem] left-0 right-0 bg-white p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] max-w-[480px] mx-auto z-40">
+            <div class="flex gap-2">
+                <button onclick="saveAsFavoriteOrder()" class="bg-red-100 text-red-600 px-3 py-3 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-heart"></i>
+                </button>
+                <button onclick="openPaymentModal()" class="flex-1 bg-green-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg order-btn transition">
+                    <i class="fab fa-whatsapp text-xl"></i> CONFIRM ORDER
+                </button>
+            </div>
+        </div>
+
+        <!-- PAYMENT METHOD MODAL -->
+        <div id="payment-modal" class="hide fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div class="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl transform transition-all duration-300 scale-95 opacity-0" id="payment-modal-content">
+                <!-- Header -->
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i class="fas fa-credit-card text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800">Choose Payment Method</h3>
+                    <p class="text-sm text-gray-500 mt-1">Select how you'd like to pay for your order</p>
+                </div>
+                
+                <!-- Payment Options -->
+                <div class="space-y-4 mb-6">
+                    <!-- Online Payment -->
+                    <label class="payment-option block cursor-pointer">
+                        <input type="radio" name="paymentMethod" value="ONLINE" id="pay-online" class="hidden">
+                        <div class="payment-card border-2 border-gray-200 rounded-2xl p-4 transition-all duration-200 hover:border-blue-300 hover:shadow-md">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                                    <i class="fas fa-mobile-alt text-white text-lg"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="font-bold text-gray-800">Online Payment</div>
+                                    <div class="text-sm text-gray-500">Pay instantly via UPI, Cards & Wallets</div>
+                                    <div class="text-xs text-green-600 font-medium mt-1">✓ Secure & Fast</div>
+                                </div>
+                                <div class="radio-indicator w-5 h-5 border-2 border-gray-300 rounded-full flex items-center justify-center">
+                                    <div class="w-3 h-3 bg-blue-500 rounded-full opacity-0 transition-opacity duration-200"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </label>
+                    
+                    <!-- Cash on Delivery -->
+                    <label class="payment-option block cursor-pointer">
+                        <input type="radio" name="paymentMethod" value="COD" id="pay-cod" class="hidden" checked>
+                        <div class="payment-card border-2 border-green-300 rounded-2xl p-4 transition-all duration-200 shadow-md bg-green-50">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                                    <i class="fas fa-money-bill-wave text-white text-lg"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="font-bold text-gray-800">Cash On Delivery</div>
+                                    <div class="text-sm text-gray-500">Pay when your order arrives</div>
+                                    <div class="text-xs text-orange-600 font-medium mt-1">✓ No advance payment needed</div>
+                                </div>
+                                <div class="radio-indicator w-5 h-5 border-2 border-green-500 rounded-full flex items-center justify-center">
+                                    <div class="w-3 h-3 bg-green-500 rounded-full transition-opacity duration-200"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex gap-3">
+                    <button onclick="closePaymentModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
+                        Cancel
+                    </button>
+                    <button onclick="confirmPaymentAndSend()" class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-xl font-bold hover:from-green-600 hover:to-green-700 transition-all shadow-lg">
+                        Proceed to Pay
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- UPI PAYMENT MODAL (shows when Online Payment is selected) -->
+        <div id="upi-payment-modal" class="hide fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl w-full max-w-sm p-6">
+                <div class="text-center mb-6">
+                    <div class="text-4xl mb-2">💳</div>
+                    <h3 class="text-xl font-bold">Secure Payment via Razorpay</h3>
+                    <p class="text-sm text-gray-500 mt-1">Pay securely using UPI, Cards, or Wallets</p>
+                </div>
+                <div id="razorpay-info" class="bg-blue-50 p-4 rounded-lg mb-4 border border-blue-200 text-sm text-center">
+                    <div id="razorpay-amount" class="text-2xl font-bold text-blue-700 mb-2">₹0</div>
+                    <div class="text-gray-700">Click below to proceed to secure payment</div>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="initiateRazorpayPayment()" class="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700">Proceed to Pay</button>
+                    <button onclick="cancelUPIPayment()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg">Cancel</button>
+                </div>
+                <p class="text-xs text-gray-500 text-center mt-3">Powered by Razorpay • Secure & Fast</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MINI CART placeholder removed (moved into header) -->
+
+    <!-- BOTTOM NAV -->
+    <div id="bottom-nav" class="sticky-bottom-nav hide">
+        <div class="flex justify-around items-center h-full px-4">
+            <button onclick="showCurrentView('home')" class="nav-item active flex flex-col items-center py-1 px-2 rounded-3xl">
+                <div class="nav-icon bg-gradient-to-br from-green-100 to-green-200 rounded-2xl p-2 flex items-center justify-center">
+                    <i class="fas fa-home text-xl text-green-700"></i>
+                </div>
+                <span>Home</span>
+            </button>
+            <button onclick="showCart()" class="nav-item text-gray-500 hover:text-green-600 flex flex-col items-center py-1 px-2 rounded-3xl relative">
+                <div class="nav-icon bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl p-2 flex items-center justify-center relative">
+                    <i class="fas fa-shopping-bag text-xl"></i>
+                    <span id="bottomCartBadge" class="hide absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-lg">0</span>
+                </div>
+                <span>Cart</span>
+            </button>
+            <button onclick="showCurrentView('about')" class="nav-item text-gray-500 hover:text-green-600 flex flex-col items-center py-1 px-2 rounded-3xl">
+                <div class="nav-icon bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl p-2 flex items-center justify-center">
+                    <i class="fas fa-info-circle text-xl"></i>
+                </div>
+                <span>About</span>
+            </button>
+            <button onclick="showCurrentView('contact')" class="nav-item text-gray-500 hover:text-green-600 flex flex-col items-center py-1 px-2 rounded-3xl">
+                <div class="nav-icon bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl p-2 flex items-center justify-center">
+                    <i class="fas fa-headset text-xl"></i>
+                </div>
+                <span>Support</span>
+            </button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Global error overlay so users can see runtime errors without opening devtools
+    (function(){
+        const overlay = document.createElement('div');
+        overlay.id = 'error-overlay';
+        overlay.className = 'error-overlay';
+        overlay.innerHTML = `<div class="error-box"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><strong>Application Error</strong><button id="error-close" style="background:#ef4444;color:#fff;border:none;padding:6px 10px;border-radius:8px;cursor:pointer">Dismiss</button></div><pre id="error-pre"></pre></div>`;
+        document.addEventListener('DOMContentLoaded', ()=> document.body.appendChild(overlay));
+
+        function showError(msg) {
+            const el = document.getElementById('error-overlay') || overlay;
+            const pre = el.querySelector('#error-pre');
+            if (pre) pre.textContent = msg;
+            el.style.display = 'flex';
+        }
+
+        window.addEventListener('error', function(ev){
+            try { showError((ev && ev.message ? ev.message : 'Unknown error') + '\n' + (ev && ev.error && ev.error.stack ? ev.error.stack : (ev && ev.filename ? ev.filename+':'+ev.lineno : ''))); } catch(e){}
+        });
+        window.addEventListener('unhandledrejection', function(ev){
+            try { showError('Unhandled Promise Rejection:\n' + (ev && ev.reason ? (ev.reason.stack || ev.reason) : JSON.stringify(ev))); } catch(e){}
+        });
+
+        document.addEventListener('click', function(e){
+            if (e.target && e.target.id === 'error-close') {
+                const el = document.getElementById('error-overlay');
+                if (el) el.style.display = 'none';
+            }
+        });
+    })();
+    const products = [
+        // --- STAPLES (BUNDLE PACKS ONLY) ---
+        { id: 300, name: "Daily Essentials Bundle", teluguName: "రోజువారీ అవసరాలు", price: 199, unit: "Pack", category: "STAPLES", img: "https://images.unsplash.com/photo-1488459716781-6a19d7a2e3ad?w=200&h=200&fit=crop" },
+        { id: 301, name: "Weekly Essentials Bundle", teluguName: "వారపు అవసరాలు", price: 499, unit: "Pack", category: "STAPLES", img: "https://images.unsplash.com/photo-1605033115488-544b90dd6f4b?w=200&h=200&fit=crop" },
+
+        // --- CORE VEGETABLES (Originals) ---
+        { id: 1, name: "Tomato (Local)", teluguName: "టమాటా", price: 50, halfPrice: 30, unit: "Kg (950g-1000g)", category: "VEGETABLES", img: "./images/tomato.jpg" },
+        { id: 4, name: "Green Chilli", teluguName: "పచ్చి మిర్చి", price: 20, halfPrice: 12, unit: "250g", category: "VEGETABLES", img: "./images/green-chilli.jpg" },
+        { id: 5, name: "Ladies Finger (Bhindi)", teluguName: "బెండకాయ", price: 60, halfPrice: 35, unit: "Kg (950g-1000g)", category: "VEGETABLES", img: "./images/ladiesfinger.jpg" },
+        { id: 6, name: "Brinjal (Purple)", teluguName: "వంకాయ", price: 50, halfPrice: 30, unit: "Kg (950g-1000g)", category: "VEGETABLES", img: "./images/brinjal.jpg" },
+        { id: 7, name: "Carrot", teluguName: "క్యారెట్", price: 70, halfPrice: 40, unit: "Kg (950g-1000g)", category: "VEGETABLES", img: "./images/carrot.jpg" },
+        { id: 13, name: "Bottle Gourd (Lauki)", teluguName: "సొరకాయ", price: 30, halfPrice: 18, unit: "Pc", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 16, name: "Ridge Gourd", teluguName: "బీరకాయ", price: 40, halfPrice: 25, unit: "Kg (950g-1000g)", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+
+        // --- EXPANDED VEGETABLES (Additional 43 items) ---
+        { id: 100, name: "Cauliflower", teluguName: "క్యాబేజీ పూలు", price: 45, halfPrice: 28, unit: "Pc", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1541519227354-08fa5d50c44d?w=200&h=200&fit=crop" },
+        { id: 101, name: "Cabbage", teluguName: "క్యాబేజీ", price: 30, halfPrice: 18, unit: "Pc", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1587049352244-01c2a4b66a65?w=200&h=200&fit=crop" },
+        { id: 102, name: "Capsicum (Green)", teluguName: "పచ్చి మిరప", price: 80, halfPrice: 45, unit: "Kg (950g-1000g)", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 103, name: "Capsicum (Red)", teluguName: "ఎరుపు మిరప", price: 180, halfPrice: 100, unit: "Kg (950g-1000g)", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 104, name: "Capsicum (Yellow)", teluguName: "పసుపు మిరప", price: 170, halfPrice: 95, unit: "Kg (950g-1000g)", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 105, name: "Sweet Potato", teluguName: "చిలగడ దుంప", price: 50, halfPrice: 30, unit: "Kg (950g-1000g)", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 106, name: "Radish (Mula)", teluguName: "ముల్లంగి", price: 40, halfPrice: 25, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 107, name: "Sweet Corn", teluguName: "మొక్కజొన్న", price: 20, halfPrice: 12, unit: "Pc", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 108, name: "Drumstick (Munaga)", teluguName: "మునగకాయ", price: 80, halfPrice: 45, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 109, name: "Cluster Beans (Gokarakaya)", teluguName: "గోకరకాయ", price: 60, halfPrice: 35, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 110, name: "French Beans", teluguName: "ఫ్రెంచ్ బీన్స్", price: 70, halfPrice: 40, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 111, name: "Green Peas (Mutter)", teluguName: "పచ్చి బఠాణీ", price: 120, halfPrice: 65, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 112, name: "Bitter Gourd (Kakarakaya)", teluguName: "కాకరకాయ", price: 70, halfPrice: 40, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 113, name: "Snake Gourd (Potlakaya)", teluguName: "పొట్లకాయ", price: 40, halfPrice: 25, unit: "Pc", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 114, name: "Ash Gourd (Boodida Gummade)", teluguName: "బూడిద గుమ్మడి", price: 50, halfPrice: 30, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 115, name: "Baby Corn", teluguName: "బేబీ కార్న్", price: 40, halfPrice: 25, unit: "Pack", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 116, name: "Mushroom (Button)", teluguName: "పుట్టగొడుగు", price: 45, halfPrice: 28, unit: "Pack", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 117, name: "Cucumber (Dosakaya)", teluguName: "దోసకాయ", price: 30, halfPrice: 18, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 118, name: "Zucchini (Green)", teluguName: "గ్రీన్ జుకీనీ", price: 120, halfPrice: 65, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 119, name: "Broccoli", teluguName: "బ్రోకలీ", price: 150, halfPrice: 80, unit: "Pc", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 120, name: "Red Onion (Small)", teluguName: "చిన్న ఉల్లిపాయ", price: 60, halfPrice: 35, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1587049352244-01c2a4b66a65?w=200&h=200&fit=crop" },
+        { id: 121, name: "Elephant Foot Yam (Kanda)", teluguName: "కంద", price: 80, halfPrice: 45, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 122, name: "Arvi (Taro Root)", teluguName: "చేమ దుంప", price: 50, halfPrice: 30, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 123, name: "Green Banana (Raw)", teluguName: "పచ్చి అరటికాయ", price: 30, halfPrice: 18, unit: "4 Pcs", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 124, name: "Raw Papaya", teluguName: "పచ్చి బొప్పాయి", price: 40, halfPrice: 25, unit: "Pc", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 125, name: "Tindli (Ivy Gourd)", teluguName: "దొండకాయ", price: 50, halfPrice: 30, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 126, name: "Sponge Gourd (Nethi Beerakaya)", teluguName: "నేతి బీరకాయ", price: 60, halfPrice: 35, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 127, name: "Pointed Gourd (Parval)", teluguName: "పొట్లపండు", price: 90, halfPrice: 50, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 128, name: "Green Bell Peppers (Local)", teluguName: "నాటు మిర్చి", price: 50, halfPrice: 30, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 129, name: "Cluster Beans (New Variety)", teluguName: "కొత్త గోకరకాయ", price: 70, halfPrice: 40, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 130, name: "Field Beans (Chikkudukaya)", teluguName: "చిక్కుడుకాయ", price: 80, halfPrice: 45, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 131, name: "White Pumpkin (Gummadi)", teluguName: "తెల్ల గుమ్మడి", price: 30, halfPrice: 18, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 132, name: "Round Brinjal (Gulla Vankaya)", teluguName: "గుల్ల వంకాయ", price: 60, halfPrice: 35, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 133, name: "Long Green Beans", teluguName: "పొడవు బీన్స్", price: 90, halfPrice: 50, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 134, name: "Yardlong Bean", teluguName: "బోడ కాకరకాయ", price: 100, halfPrice: 55, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 135, name: "Purple Cabbage", teluguName: "ఊదా క్యాబేజీ", price: 40, halfPrice: 25, unit: "Pc", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1587049352244-01c2a4b66a65?w=200&h=200&fit=crop" },
+        { id: 136, name: "Cherry Tomatoes", teluguName: "చిన్న టమాటా", price: 50, halfPrice: 30, unit: "250g", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1592924357228-91a4daadcccf?w=200&h=200&fit=crop" },
+        { id: 137, name: "Turnip", teluguName: "టర్నిప్", price: 40, halfPrice: 25, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 138, name: "Beetroot", teluguName: "బీట్రూట్", price: 60, halfPrice: 35, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 139, name: "White Radish", teluguName: "తెల్ల ముల్లంగి", price: 50, halfPrice: 30, unit: "Kg", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 140, name: "Sweet Cucumber (Pudina Dosakaya)", teluguName: "పండు దోసకాయ", price: 40, halfPrice: 25, unit: "Pc", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 146, name: "Bottle Gourd (Medium)", teluguName: "మధ్య సొరకాయ", price: 35, halfPrice: 20, unit: "Pc", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 147, name: "Potato (Small)", teluguName: "చిన్న బంగాళాదుంప", price: 35, halfPrice: 20, unit: "Kg (950g-1000g)", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1596802411933-86f3f9b5b404?w=200&h=200&fit=crop" },
+        { id: 148, name: "Onion (Local)", teluguName: "నాటు ఉల్లిపాయ", price: 35, halfPrice: 20, unit: "Kg (950g-1000g)", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1587049633312-d92c9ce0f2d9?w=200&h=200&fit=crop" },
+        { id: 149, name: "Ginger (Fresh)", teluguName: "తాజా అల్లం", price: 80, halfPrice: 45, unit: "Kg (950g-1000g)", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1556040051-0bb02e0e5bbd?w=200&h=200&fit=crop" },
+        { id: 150, name: "Garlic (Bulb)", teluguName: "వెల్లుల్లి కండ", price: 120, halfPrice: 65, unit: "Kg (950g-1000g)", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 151, name: "Lemon", teluguName: "నిలిమ్మకాయ", price: 10, halfPrice: 6, unit: "3 Pcs", category: "VEGETABLES", img: "https://images.unsplash.com/photo-1537632066927-ab7cc9a00908?w=200&h=200&fit=crop" },
+
+        // --- LEAFY GREENS (Aaku Kuralu) - 9 items ---
+        { id: 8, name: "Coriander", teluguName: "కొత్తిమీర", price: 15, halfPrice: 10, unit: "Bunch", category: "LEAFY", img: "./images/coriander.jpg" },
+        { id: 9, name: "Spinach (Palak)", teluguName: "పాలకూర", price: 20, halfPrice: 12, unit: "Bunch", category: "LEAFY", img: "./images/spinach.jpg" },
+        { id: 14, name: "Curry Leaves", teluguName: "కరివేపాకు", price: 10, halfPrice: 6, unit: "Bunch", category: "LEAFY", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 17, name: "Mint Leaves (Pudina)", teluguName: "పుదీనా", price: 10, halfPrice: 6, unit: "Bunch", category: "LEAFY", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 141, name: "Fenugreek Leaves (Methi)", teluguName: "మెంతికూర", price: 20, halfPrice: 12, unit: "Bunch", category: "LEAFY", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 142, name: "Amaranth Leaves (Thotakura)", teluguName: "తోటకూర", price: 15, halfPrice: 10, unit: "Bunch", category: "LEAFY", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 143, name: "Gongoora Leaves (Puntikura)", teluguName: "గోంగూర", price: 25, halfPrice: 15, unit: "Bunch", category: "LEAFY", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 144, name: "Mustard Leaves (Aavalu)", teluguName: "ఆవ ఆకు", price: 20, halfPrice: 12, unit: "Bunch", category: "LEAFY", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 145, name: "Spring Onion", teluguName: "ఉల్లి ఆకు", price: 30, unit: "Bunch", category: "LEAFY", img: "https://images.unsplash.com/photo-1599599910694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+
+        // --- FRUITS ---
+        { id: 21, name: "Banana (Yelakki)", teluguName: "అరటి పండు", price: 60, unit: "Doz", category: "FRUITS", img: "./images/banana.jpg" },
+        { id: 22, name: "Apple", teluguName: "ఆపిల్", price: 180, halfPrice: 95, unit: "Kg (950g-1000g)", category: "FRUITS", img: "./images/apple.jpg" },
+        { id: 200, name: "Mango (Alphonso)", teluguName: "ఆం పండు", price: 250, unit: "Kg (950g-1000g)", category: "FRUITS", img: "https://images.unsplash.com/photo-1585518419759-524aeb6c7a17?w=200&h=200&fit=crop" },
+        { id: 201, name: "Orange (Sweet)", teluguName: "ఆరెంజ్", price: 120, unit: "Kg (950g-1000g)", category: "FRUITS", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 202, name: "Grapes (Green)", teluguName: "ద్రాక్ష (ఆకుపచ్చ)", price: 180, unit: "Kg (950g-1000g)", category: "FRUITS", img: "https://images.unsplash.com/photo-1596195692316-3ac5fae10b0f?w=200&h=200&fit=crop" },
+        { id: 203, name: "Grapes (Black)", teluguName: "ద్రాక్ష (నల్ల)", price: 200, unit: "Kg (950g-1000g)", category: "FRUITS", img: "https://images.unsplash.com/photo-1596195692316-3ac5fae10b0f?w=200&h=200&fit=crop" },
+        { id: 204, name: "Pomegranate", teluguName: "దానిమ", price: 150, halfPrice: 80, unit: "Kg", category: "FRUITS", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 205, name: "Papaya (Sweet)", teluguName: "బొప్పాయి", price: 80, halfPrice: 45, unit: "Kg", category: "FRUITS", img: "https://images.unsplash.com/photo-1586985289688-cacf32ca6e87?w=200&h=200&fit=crop" },
+        { id: 206, name: "Watermelon", teluguName: "కూర్మ విస్సకాయ", price: 40, halfPrice: 25, unit: "Kg", category: "FRUITS", img: "https://images.unsplash.com/photo-1563114773-84221718f27d?w=200&h=200&fit=crop" },
+        { id: 207, name: "Pineapple", teluguName: "అనార్", price: 100, unit: "Pc", category: "FRUITS", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 208, name: "Guava (Green)", teluguName: "జామ", price: 60, halfPrice: 35, unit: "Kg", category: "FRUITS", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 209, name: "Kiwi", teluguName: "కివీ", price: 280, halfPrice: 150, unit: "Kg", category: "FRUITS", img: "https://images.unsplash.com/photo-1585518419759-524aeb6c7a17?w=200&h=200&fit=crop" },
+        { id: 210, name: "Coconut (Fresh)", teluguName: "కొబ్బరి", price: 30, unit: "Pc", category: "FRUITS", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 211, name: "Strawberry", teluguName: "స్ట్రాబెర్రీ", price: 320, halfPrice: 170, unit: "Kg", category: "FRUITS", img: "https://images.unsplash.com/photo-1587393855258-915eaeb4d077?w=200&h=200&fit=crop" },
+        { id: 212, name: "Mosambi (Sweet Lime)", teluguName: "మొసంబి", price: 80, halfPrice: 45, unit: "Kg", category: "FRUITS", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 213, name: "Dragon Fruit", teluguName: "డ్రాగన్ ఫ్రూట్", price: 200, unit: "Pc", category: "FRUITS", img: "https://images.unsplash.com/photo-1585518419759-524aeb6c7a17?w=200&h=200&fit=crop" },
+        { id: 214, name: "Blackberry", teluguName: "బ్లాక్ బెర్రీ", price: 350, halfPrice: 185, unit: "Kg", category: "FRUITS", img: "https://images.unsplash.com/photo-1587393855258-915eaeb4d077?w=200&h=200&fit=crop" },
+        
+        // --- ICE CREAMS (Minimum price ₹40; 10 items) ---
+        { id: 60, name: "Vanilla Cup (Small)", teluguName: "వెనీలా కప్", price: 40, unit: "Pc", category: "ICECREAM", img: "https://images.unsplash.com/photo-1589711907690-07b4a5b3b4fd?w=200&h=200&fit=crop" },
+        { id: 61, name: "Chocolate Cone", teluguName: "చాక్లెట్ కోన్", price: 45, unit: "Pc", category: "ICECREAM", img: "https://images.unsplash.com/photo-1505250469679-203ad9ced0cb?w=200&h=200&fit=crop" },
+        { id: 62, name: "Butterscotch Cone", teluguName: "బటర్ స్కాచ్", price: 40, unit: "Pc", category: "ICECREAM", img: "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=200&h=200&fit=crop" },
+        { id: 63, name: "Choco Bar (Premium)", teluguName: "చాకో బార్", price: 40, unit: "Pc", category: "ICECREAM", img: "https://images.unsplash.com/photo-1558021212-51b6b5d72b5b?w=200&h=200&fit=crop" },
+        { id: 64, name: "Kulfi Stick (Malai)", teluguName: "కుల్ఫీ", price: 40, unit: "Pc", category: "ICECREAM", img: "https://images.unsplash.com/photo-1582719478174-0f3b1b1a3f8d?w=200&h=200&fit=crop" },
+        { id: 65, name: "Mango Duet (Premium)", teluguName: "మామిడి బార్", price: 45, unit: "Pc", category: "ICECREAM", img: "https://images.unsplash.com/photo-1565778735664-38b1d4f2a9d8?w=200&h=200&fit=crop" },
+        { id: 66, name: "Fruit Sorbet Cup", teluguName: "పండ్లు సోర్బెట్", price: 40, unit: "Pc", category: "ICECREAM", img: "https://images.unsplash.com/photo-1505250469679-203ad9ced0cb?w=200&h=200&fit=crop" },
+        { id: 67, name: "Cassata Slice", teluguName: "కసాటా స్లైస్", price: 50, unit: "Pc", category: "ICECREAM", img: "https://images.unsplash.com/photo-1532634896-26909d0d4b99?w=200&h=200&fit=crop" },
+        { id: 68, name: "Strawberry Cup", teluguName: "స్ట్రాబెర్రీ కప్", price: 40, unit: "Pc", category: "ICECREAM", img: "https://images.unsplash.com/photo-1587393855258-915eaeb4d077?w=200&h=200&fit=crop" },
+        { id: 69, name: "Black Currant Cup", teluguName: "బ్లాక్ కరెంట్", price: 40, unit: "Pc", category: "ICECREAM", img: "https://images.unsplash.com/photo-1528825871115-3581a5387919?w=200&h=200&fit=crop" },
+
+        // --- COOL DRINKS (TINS Only - 10 items) ---
+        { id: 70, name: "Thums Up (Tin)", teluguName: "థమ్స్ అప్", price: 40, unit: "300ml", category: "DRINKS", img: "https://placehold.co/200x200/fecaca/dc2626?text=ThumsUp+Tin" },
+        { id: 71, name: "Coca Cola (Tin)", teluguName: "కోకాకోలా", price: 40, unit: "300ml", category: "DRINKS", img: "https://placehold.co/200x200/fecaca/dc2626?text=Coke+Tin" },
+        { id: 72, name: "Sprite (Tin)", teluguName: "స్ప్రైట్", price: 40, unit: "300ml", category: "DRINKS", img: "https://placehold.co/200x200/d1fae5/059669?text=Sprite+Tin" },
+        { id: 73, name: "Red Bull", teluguName: "రెడ్ బుల్", price: 125, unit: "Can", category: "DRINKS", img: "https://placehold.co/200x200/fef3c7/f59e0b?text=Red+Bull" },
+        { id: 74, name: "Sting (Energy)", teluguName: "స్టింగ్", price: 20, unit: "Can", category: "DRINKS", img: "https://placehold.co/200x200/fecaca/dc2626?text=Sting+Can" },
+        { id: 75, name: "Maaza (Tin)", teluguName: "మాజా", price: 35, unit: "250ml", category: "DRINKS", img: "https://placehold.co/200x200/ffedd5/f97316?text=Maaza+Tin" },
+        { id: 76, name: "Mountain Dew (Tin)", teluguName: "డ్యూ", price: 40, unit: "300ml", category: "DRINKS", img: "https://placehold.co/200x200/d1fae5/059669?text=Dew+Tin" },
+        { id: 77, name: "7 Up (Tin)", teluguName: "7 అప్", price: 40, unit: "300ml", category: "DRINKS", img: "https://placehold.co/200x200/d1fae5/059669?text=7Up+Tin" },
+        { id: 78, name: "Fanta (Tin)", teluguName: "ఫాంటా", price: 40, unit: "300ml", category: "DRINKS", img: "https://placehold.co/200x200/ffedd5/f97316?text=Fanta+Tin" },
+        { id: 79, name: "Diet Coke (Tin)", teluguName: "డైట్ కోక్", price: 45, unit: "300ml", category: "DRINKS", img: "https://placehold.co/200x200/fecaca/dc2626?text=Diet+Coke+Tin" },
+
+        // --- CIGARETTES (PAN SHOP - 11 items) ---
+        { id: 80, name: "Gold Flake (Kings)", teluguName: "గోల్డ్ ఫ్లేక్ కింగ్స్", price: 190, unit: "Pack", category: "PANSHOP", img: "https://placehold.co/200x200/d1d5db/374151?text=GF+Kings" },
+        { id: 81, name: "Gold Flake (Lights)", teluguName: "గోల్డ్ ఫ్లేక్ లైట్స్", price: 190, unit: "Pack", category: "PANSHOP", img: "https://placehold.co/200x200/d1d5db/374151?text=GF+Lights" },
+        { id: 82, name: "Gold Flake (Small)", teluguName: "చిన్న గోల్డ్ ఫ్లేక్", price: 95, unit: "Pack", category: "PANSHOP", img: "https://placehold.co/200x200/d1d5db/374151?text=GF+Small" },
+        { id: 83, name: "Wills (Navy Cut)", teluguName: "విల్స్", price: 180, unit: "Pack", category: "PANSHOP", img: "https://placehold.co/200x200/d1d5db/374151?text=Wills" },
+        { id: 84, name: "Classic (Regular)", teluguName: "క్లాసిక్", price: 340, unit: "Pack", category: "PANSHOP", img: "https://placehold.co/200x200/d1d5db/374151?text=Classic" },
+        { id: 85, name: "Classic (Milds)", teluguName: "క్లాసిక్ మైల్డ్స్", price: 340, unit: "Pack", category: "PANSHOP", img: "https://placehold.co/200x200/d1d5db/374151?text=Classic+Milds" },
+        { id: 86, name: "Marlboro (Red)", teluguName: "మార్ల్బోరో రెడ్", price: 360, unit: "Pack", category: "PANSHOP", img: "https://placehold.co/200x200/d1d5db/374151?text=Marlboro+Red" },
+        { id: 87, name: "Marlboro (Lights)", teluguName: "మార్ల్బోరో లైట్స్", price: 360, unit: "Pack", category: "PANSHOP", img: "https://placehold.co/200x200/d1d5db/374151?text=Marlboro+Lights" },
+        { id: 88, name: "Charminar (Local)", teluguName: "చార్మినార్", price: 50, unit: "Pack", category: "PANSHOP", img: "https://placehold.co/200x200/d1d5db/374151?text=Charminar" },
+        { id: 89, name: "Bristol", teluguName: "బ్రిస్టల్", price: 80, unit: "Pack", category: "PANSHOP", img: "https://placehold.co/200x200/d1d5db/374151?text=Bristol" },
+        { id: 90, name: "Insignia", teluguName: "ఇన్సిగ్నియా", price: 450, unit: "Pack", category: "PANSHOP", img: "https://placehold.co/200x200/d1d5db/374151?text=Insignia" },
+
+        // --- LIGHTERS (PAN SHOP - 2 local brands) ---
+        { id: 91, name: "Devi Lighter (Refillable)", teluguName: "దేవి లైటర్", price: 35, unit: "Pc", category: "PANSHOP", img: "https://placehold.co/200x200/fef3c7/f59e0b?text=Devi+Lighter" },
+        { id: 92, name: "Ronson Lighter (Premium)", teluguName: "రాన్సన్ లైటర్", price: 50, unit: "Pc", category: "PANSHOP", img: "https://placehold.co/200x200/fef3c7/f59e0b?text=Ronson+Lighter" },
+
+        // --- NON-VEG (FROZEN - 10 items) ---
+        { id: 100, name: "Chicken Breast (Boneless)", teluguName: "కోడి ముక్కలు", price: 280, halfPrice: 150, unit: "Kg", category: "NONVEG", img: "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=200&h=200&fit=crop" },
+        { id: 101, name: "Chicken Thighs", teluguName: "కోడి తొడ", price: 220, halfPrice: 120, unit: "Kg", category: "NONVEG", img: "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=200&h=200&fit=crop" },
+        { id: 102, name: "Chicken Legs", teluguName: "కోడి కాళ్ళు", price: 180, halfPrice: 100, unit: "Kg", category: "NONVEG", img: "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=200&h=200&fit=crop" },
+        { id: 103, name: "Mutton (Goat Meat)", teluguName: "గొర్రెను", price: 800, halfPrice: 420, unit: "Kg", category: "NONVEG", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 104, name: "Fish (Rohu)", teluguName: "రోహూ చేపలు", price: 300, halfPrice: 160, unit: "Kg", category: "NONVEG", img: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=200&h=200&fit=crop" },
+        { id: 105, name: "Fish (Tilapia)", teluguName: "టిలేపియా", price: 250, halfPrice: 135, unit: "Kg", category: "NONVEG", img: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=200&h=200&fit=crop" },
+        { id: 106, name: "Prawns (Shrimp)", teluguName: "రొయ్యలు", price: 500, halfPrice: 270, unit: "Kg", category: "NONVEG", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 107, name: "Eggs (Brown) - 6 Pc", teluguName: "గుడ్డు (6 పిసీ)", price: 45, unit: "Pack", category: "NONVEG", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 108, name: "Eggs (Brown) - 12 Pc", teluguName: "గుడ్డు (12 పిసీ)", price: 85, unit: "Pack", category: "NONVEG", img: "https://images.unsplash.com/photo-1599599810694-b5ac4dd64a73?w=200&h=200&fit=crop" },
+        { id: 109, name: "Chicken Keema (Minced)", teluguName: "కోడి కీమా", price: 240, halfPrice: 130, unit: "Kg", category: "NONVEG", img: "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=200&h=200&fit=crop" },
+
+        // --- BATTERS & INSTANT (Ready-to-Cook) ---
+        { id: 110, name: "Idly Batter (Fresh)", teluguName: "ఇడ్లీ బ్యాటర్", price: 60, halfPrice: 35, unit: "500g", category: "BATTERS", img: "https://images.unsplash.com/photo-1585238341710-4abb9f2e1cd2?w=200&h=200&fit=crop" },
+        { id: 111, name: "Dosa Batter (Fresh)", teluguName: "దోస బ్యాటర్", price: 60, halfPrice: 35, unit: "500g", category: "BATTERS", img: "https://images.unsplash.com/photo-1585238341710-4abb9f2e1cd2?w=200&h=200&fit=crop" },
+        { id: 112, name: "Frozen Chapathi", teluguName: "ఫ్రోజన్ చపాతి", price: 90, unit: "Pack (10pcs)", category: "BATTERS", img: "https://images.unsplash.com/photo-1585238341710-4abb9f2e1cd2?w=200&h=200&fit=crop" },
+        { id: 113, name: "Instant Parota (Frozen)", teluguName: "పరోట ఫ్రోజన్", price: 80, unit: "Pack (5pcs)", category: "BATTERS", img: "https://images.unsplash.com/photo-1585238341710-4abb9f2e1cd2?w=200&h=200&fit=crop" },
+        { id: 115, name: "Uttapam Batter", teluguName: "ఉత్తపం బ్యాటర్", price: 65, halfPrice: 38, unit: "500g", category: "BATTERS", img: "https://images.unsplash.com/photo-1585238341710-4abb9f2e1cd2?w=200&h=200&fit=crop" },
+
+        // --- GRAINS (4 items) ---
+        { id: 215, name: "Sona Masoori Rice (1Kg)", teluguName: "సోనా మసూరి బియ్యం", price: 70, halfPrice: 40, unit: "Kg (950g-1000g)", category: "GRAINS", img: "https://images.unsplash.com/photo-1580910051071-3bdbf8fe3b8f?w=200&h=200&fit=crop" },
+        { id: 216, name: "Basmati Rice (Premium) 1Kg", teluguName: "బాస్మతి బియ్యం", price: 150, halfPrice: 80, unit: "Kg (950g-1000g)", category: "GRAINS", img: "https://images.unsplash.com/photo-1506806732259-39c2d0268443?w=200&h=200&fit=crop" },
+        { id: 217, name: "Toor Dal (Arhar) 1Kg", teluguName: "తూర దాల్", price: 120, halfPrice: 65, unit: "Kg (950g-1000g)", category: "GRAINS", img: "https://images.unsplash.com/photo-1599058917212-2b3a5f6f9b1f?w=200&h=200&fit=crop" },
+        { id: 218, name: "Atta (Whole Wheat) 5Kg", teluguName: "గోదీ పిండి", price: 250, unit: "Pack (5Kg)", category: "GRAINS", img: "https://images.unsplash.com/photo-1604908177522-7f2a9b8a3a38?w=200&h=200&fit=crop" },
+        // --- LOCAL MILLETS (Added per request) ---
+        { id: 224, name: "Finger Millet (Ragi)", teluguName: "రాగులు", aliases: ["ragi","finger millet","ragulu","finger-millet"], price: 95, halfPrice: 50, unit: "Kg (950g-1000g)", category: "GRAINS", img: "https://images.unsplash.com/photo-1601050690598-0a3f7a1a9b2a?w=200&h=200&fit=crop" },
+        { id: 225, name: "Pearl Millet (Bajra)", teluguName: "సజ్జలు", aliases: ["bajra","pearl millet","sajjalu","bajra millet"], price: 60, halfPrice: 35, unit: "Kg (950g-1000g)", category: "GRAINS", img: "https://images.unsplash.com/photo-1580910051064-2f8b7b6f3c5b?w=200&h=200&fit=crop" },
+        { id: 226, name: "Foxtail Millet (Korralu)", teluguName: "కొర్రలు", aliases: ["foxtail millet","korralu","kangni","foxtail"], price: 120, halfPrice: 65, unit: "Kg (950g-1000g)", category: "GRAINS", img: "https://images.unsplash.com/photo-1580910051080-6d7c3f5e4a1c?w=200&h=200&fit=crop" },
+        { id: 227, name: "Sorghum (Jowar)", teluguName: "జొన్నలు", aliases: ["jowar","sorghum","jonnalu","jonna"], price: 55, halfPrice: 30, unit: "Kg (950g-1000g)", category: "GRAINS", img: "https://images.unsplash.com/photo-1580910051095-1f2b6a7d8c3d?w=200&h=200&fit=crop" },
+
+        // --- POWDERS & SPICES ---
+        { id: 219, name: "Turmeric Powder", teluguName: "పసుపు పొడి", price: 60, unit: "200g", category: "POWDERS", img: "https://images.unsplash.com/photo-1604908177479-0c9b2e9c68b5?w=200&h=200&fit=crop" },
+        { id: 220, name: "Red Chilli Powder", teluguName: "మిరప పొడి", price: 45, unit: "200g", category: "POWDERS", img: "https://images.unsplash.com/photo-1589307000239-9b3b3d6f3a2a?w=200&h=200&fit=crop" },
+        { id: 221, name: "Coriander Powder", teluguName: "ధనియాల పొడి", price: 40, unit: "200g", category: "POWDERS", img: "https://images.unsplash.com/photo-1604908177421-7b5361d3a9c4?w=200&h=200&fit=crop" },
+        { id: 222, name: "Garam Masala", teluguName: "గరం మసాలా", price: 70, unit: "100g", category: "POWDERS", img: "https://images.unsplash.com/photo-1604908177464-4a0b6f3f9a2a?w=200&h=200&fit=crop" },
+        { id: 223, name: "Sambar Powder", teluguName: "సాంబార్ పౌడర్", price: 55, unit: "200g", category: "POWDERS", img: "https://images.unsplash.com/photo-1604908177408-8a2b5c6d2b3b?w=200&h=200&fit=crop" },
+        
+        // --- MILK & DAIRY PRODUCTS (15 items) ---
+        { id: 400, name: "Fresh Milk (Full Cream)", teluguName: "పాలు (పూర్తి)", price: 30, unit: "500ml", category: "DAIRY", img: "./images/milk.jpg" },
+        { id: 401, name: "Fresh Milk (Full Cream) 1L", teluguName: "పాలు 1 లీటర్", price: 58, unit: "1L", category: "DAIRY", img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200&h=200&fit=crop" },
+        { id: 402, name: "Toned Milk", teluguName: "టోన్డ్ మిల్క్", price: 26, unit: "500ml", category: "DAIRY", img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200&h=200&fit=crop" },
+        { id: 403, name: "Toned Milk 1L", teluguName: "టోన్డ్ మిల్క్ 1L", price: 50, unit: "1L", category: "DAIRY", img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200&h=200&fit=crop" },
+        { id: 404, name: "Curd (Fresh) - Cup", teluguName: "మోసరు కప్", price: 15, unit: "200g Cup", category: "DAIRY", img: "https://images.unsplash.com/photo-1571212515416-6b8d4d6c2e8d?w=200&h=200&fit=crop" },
+        { id: 405, name: "Curd (Fresh) - 500g", teluguName: "మోసరు 500g", price: 35, unit: "500g", category: "DAIRY", img: "https://images.unsplash.com/photo-1571212515416-6b8d4d6c2e8d?w=200&h=200&fit=crop" },
+        { id: 406, name: "Curd (Fresh) - 1Kg", teluguName: "మోసరు 1Kg", price: 65, unit: "1Kg", category: "DAIRY", img: "https://images.unsplash.com/photo-1571212515416-6b8d4d6c2e8d?w=200&h=200&fit=crop" },
+        { id: 407, name: "Paneer (Fresh)", teluguName: "పనీర్", price: 80, halfPrice: 45, unit: "250g", category: "DAIRY", img: "https://images.unsplash.com/photo-1631452180539-96aca7d48617?w=200&h=200&fit=crop" },
+        { id: 408, name: "Paneer (Fresh) - 500g", teluguName: "పనీర్ 500g", price: 150, unit: "500g", category: "DAIRY", img: "https://images.unsplash.com/photo-1631452180539-96aca7d48617?w=200&h=200&fit=crop" },
+        { id: 409, name: "Butter (Amul)", teluguName: "బట్టర్", price: 60, unit: "100g", category: "DAIRY", img: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=200&h=200&fit=crop" },
+        { id: 410, name: "Butter (Amul) - 500g", teluguName: "బట్టర్ 500g", price: 280, unit: "500g", category: "DAIRY", img: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=200&h=200&fit=crop" },
+        { id: 411, name: "Ghee (Pure)", teluguName: "నెయ్యి", price: 120, unit: "200ml", category: "DAIRY", img: "https://images.unsplash.com/photo-1609501676725-7186f0b5c4f8?w=200&h=200&fit=crop" },
+        { id: 412, name: "Ghee (Pure) - 500ml", teluguName: "నెయ్యి 500ml", price: 280, unit: "500ml", category: "DAIRY", img: "https://images.unsplash.com/photo-1609501676725-7186f0b5c4f8?w=200&h=200&fit=crop" },
+        { id: 413, name: "Cheese Slices", teluguName: "చీస్ స్లైస్", price: 45, unit: "200g Pack", category: "DAIRY", img: "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=200&h=200&fit=crop" },
+        { id: 414, name: "Lassi (Sweet)", teluguName: "లస్సీ", price: 25, unit: "200ml", category: "DAIRY", img: "https://images.unsplash.com/photo-1571212515416-6b8d4d6c2e8d?w=200&h=200&fit=crop" },
+    ];
+
+    let cart = {}; 
+    let activeCategory = 'ALL';
+    const BUSINESS_PHONE = "917702907454"; 
+    const DELIVERY_FEE = 20;
+    const MIN_ORDER = 100;
+    
+    // New UX Features Data
+    let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+    let recentOrders = JSON.parse(localStorage.getItem('recentOrders') || '[]');
+    let loyaltyPoints = parseInt(localStorage.getItem('loyaltyPoints') || '0');
+    let orderHistory = JSON.parse(localStorage.getItem('orderHistory') || '[]');
+    let adminTaps = 0; // Counter for admin access
+    
+    const popularItems = [1, 4, 5, 6, 21, 22, 8, 9]; // Popular product IDs
+    const shoppingLists = {
+        weekly: [1, 4, 5, 6, 8, 9, 21, 147, 148, 149, 401, 405, 407], // Weekly Groceries
+        party: [21, 22, 60, 61, 70, 71, 72], // Party Essentials
+        breakfast: [110, 111, 107, 108, 8, 17] // Breakfast Items
+    };
+
+    const getProduct = (id) => products.find(p => p.id === id);
+
+    const formatQtyDisplay = (qty, unit) => {
+        const cleanUnit = unit.replace(' (950g-1000g)', '').replace(' (450g-500g)', '');
+        const isKgUnit = cleanUnit === 'Kg';
+        
+        if (isKgUnit && qty === 0.5) {
+            return '500g';
+        }
+        
+        const formattedQty = parseFloat(qty).toFixed(1);
+        if (formattedQty.endsWith('.0')) {
+            return `${Math.round(qty)} ${cleanUnit}`;
+        }
+        
+        return `${formattedQty} ${cleanUnit}`;
+    };
+
+    const calculateItemCost = (id, qty) => {
+        const p = getProduct(id);
+        if (!p) return 0;
+        const isKgItem = p.unit.includes('Kg');
+        
+        // Handle items priced per Kg where a 0.5Kg option exists and has a specific halfPrice
+        if (isKgItem && p.halfPrice) {
+            if (qty === 0.5) {
+                 return p.halfPrice; 
+            } else if (qty > 0) {
+                return qty * p.price; 
+            }
+        }
+        return p.price * qty;
+    }
+
+    function checkSavedDetails() {
+        if (localStorage.getItem('custPhone')) {
+            document.getElementById('view-details').classList.add('hide');
+            const savedCart = localStorage.getItem('cart');
+            if (savedCart) {
+                try {
+                    const tempCart = JSON.parse(savedCart);
+                    cart = {};
+                    Object.keys(tempCart).forEach(id => {
+                        const newId = Number(id);
+                        const qty = tempCart[id];
+                        if (qty > 0) {
+                            cart[newId] = { qty: qty, cost: calculateItemCost(newId, qty) };
+                        }
+                    });
+                } catch (e) {
+                    console.error("Error loading cart:", e);
+                    cart = {};
+                }
+            } else {
+                 cart = {};
+            }
+            initializeUXFeatures();
+            showCurrentView('home');
+        } else {
+            document.getElementById('view-details').classList.remove('hide');
+        }
+    }
+
+    function saveAndStartShopping() {
+        const name = document.getElementById('initialName').value.trim();
+        const phone = document.getElementById('initialPhone').value.trim();
+        const address = document.getElementById('initialAddress').value.trim();
+        const error = document.getElementById('detailsError');
+
+        if (!name || !phone || !address || phone.length < 10 || isNaN(phone)) {
+            error.classList.remove('hide');
+            return;
+        }
+
+        localStorage.setItem('custName', name);
+        localStorage.setItem('custPhone', phone);
+        localStorage.setItem('custAddress', address);
+        
+        error.classList.add('hide');
+        document.getElementById('view-details').classList.add('hide');
+        showCurrentView('home');
+    }
+
+    function showCurrentView(viewName) {
+        const views = ['details', 'home', 'about', 'contact', 'cart'];
+        views.forEach(view => document.getElementById(`view-${view}`).classList.add('hide'));
+
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            btn.classList.remove('active', 'text-green-600');
+            btn.classList.add('text-gray-500');
+            const icon = btn.querySelector('.nav-icon');
+            if (icon) {
+                icon.classList.remove('bg-green-100');
+                icon.classList.add('bg-gray-100');
+            }
+        });
+
+        const targetView = document.getElementById(`view-${viewName}`);
+        if (targetView) targetView.classList.remove('hide');
+
+        if (viewName === 'home') {
+            const homeBtn = document.querySelector('.nav-item[onclick="showCurrentView(\'home\')"]');
+            homeBtn.classList.add('active', 'text-green-600');
+            homeBtn.querySelector('.nav-icon').classList.remove('bg-gray-100');
+            homeBtn.querySelector('.nav-icon').classList.add('bg-green-100');
+            updateMiniCart();
+            renderProducts(activeCategory);
+        } else if (viewName === 'cart') {
+            const cartBtn = document.querySelector('.nav-item[onclick="showCart()"]');
+            cartBtn.classList.add('active', 'text-green-600');
+            cartBtn.querySelector('.nav-icon').classList.remove('bg-gray-100');
+            cartBtn.querySelector('.nav-icon').classList.add('bg-green-100');
+            renderCart();
+            document.getElementById('mini-cart-bar').classList.add('hide'); 
+        } else if (viewName === 'details') {
+            document.getElementById('view-details').classList.remove('hide');
+            document.getElementById('bottom-nav').classList.add('hide'); 
+        } else {
+            const navButton = document.querySelector(`.nav-item[onclick="showCurrentView('${viewName}')"]`);
+            if (navButton) {
+                navButton.classList.add('active', 'text-green-600');
+                navButton.querySelector('.nav-icon').classList.remove('bg-gray-100');
+                navButton.querySelector('.nav-icon').classList.add('bg-green-100');
+            }
+        }
+        
+        if (viewName !== 'details') {
+            document.getElementById('bottom-nav').classList.remove('hide');
+        }
+        window.scrollTo(0, 0); 
+    }
+
+    function showCart() { showCurrentView('cart'); }
+    
+    function setActiveCategory(button, category) {
+        activeCategory = category;
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            if (btn.dataset.category === category) {
+                btn.className = 'category-btn bg-green-600 text-white px-4 py-1 rounded-full text-sm font-medium whitespace-nowrap';
+            } else {
+                btn.className = 'category-btn bg-gray-200 text-gray-600 px-4 py-1 rounded-full text-sm font-medium whitespace-nowrap';
+            }
+        });
+        renderProducts(category);
+        document.getElementById('searchInput').value = ''; 
+    }
+
+    function filterProducts() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const suggestions = document.getElementById('searchSuggestions');
+        
+        // Hide suggestions when typing
+        if (query.length > 0) {
+            suggestions.classList.add('hide');
+        }
+        
+        // Reset to ALL category when searching
+        if (query.length > 0) {
+            activeCategory = 'ALL';
+            // Update category buttons
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                if (btn.dataset.category === 'ALL') {
+                    btn.className = 'category-btn bg-green-600 text-white px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1';
+                } else {
+                    btn.className = 'category-btn bg-gray-200 text-gray-600 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1';
+                }
+            });
+        }
+        
+        renderProducts(activeCategory, query);
+    }
+
+    function renderProducts(category, query = '') {
+        // Handle special categories
+        if (category === 'FAVORITES') {
+            renderFavoriteProducts();
+            return;
+        }
+        if (category === 'RECENT') {
+            showRecentOrders();
+            return;
+        }
+        
+        const grid = document.getElementById('product-grid');
+        const filteredProducts = products.filter(p => {
+            const isBundlePack = p.id === 300 || p.id === 301;
+            const matchesCategory = (category === 'ALL' && !isBundlePack) || p.category === category;
+            const aliasesText = (p.aliases || []).join(' ').toLowerCase();
+            const teluguLower = (p.teluguName || '').toLowerCase();
+            const matchesSearch = query === '' || p.name.toLowerCase().includes(query) || p.unit.toLowerCase().includes(query) || aliasesText.includes(query) || teluguLower.includes(query);
+            return matchesCategory && matchesSearch;
+        });
+
+        grid.innerHTML = filteredProducts.map(p => `
+            <div id="product-card-${p.id}" class="bg-white p-2 rounded-xl shadow-md border border-gray-100 flex flex-col transition duration-150 hover:shadow-lg">
+                <div class="h-32 bg-gray-100 mb-2 rounded-lg flex items-center justify-center overflow-hidden relative">
+                    ${p.img ? `<img src="${p.img}" class="w-full h-full object-cover" alt="${p.name}">` : `<div class="image-placeholder w-full h-full">${p.name}</div>`}
+                    <button onclick="toggleFavorite(${p.id})" class="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center ${favorites.includes(p.id) ? 'bg-red-500 text-white' : 'bg-white text-gray-400'} shadow-sm hover:scale-110 transition-transform">
+                        <i class="fas fa-heart text-xs"></i>
+                    </button>
+                </div>
+                <h3 class="font-bold text-gray-800 text-sm truncate">${p.name}</h3>
+                <h4 class="text-xs text-green-700 font-bold italic">${p.teluguName}</h4>
+                ${p.unit.includes('Kg') ? '<p class="text-xs text-gray-400 mt-0.5">AW: ' + (p.halfPrice ? '450-500g for Half KG, 950-1000g for 1KG' : '950-1000g for 1KG') + '</p>' : ''}
+                <span class="text-lg font-bold text-green-600 mt-1">₹${p.price}/${p.unit.replace(' (950g-1000g)', '').replace(' (450g-500g)', '')}</span>
+                <div class="mt-2 flex justify-between items-center" id="controls-${p.id}">
+                     ${getAddButtonHtml(p.id)}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function getAddButtonHtml(id) {
+        const qty = (cart[id] && cart[id].qty) || 0;
+        const product = getProduct(id);
+        const step = product.unit.includes('Kg') ? 0.5 : 1; // 0.5kg steps for kg items
+        
+        if (qty === 0) {
+            if (product.unit.includes('Kg') && product.halfPrice) {
+                return `
+                    <div class="flex gap-1 w-full">
+                        <button onclick="updateQty(${id}, 0.5);" class="w-1/2 bg-white border border-green-500 text-green-600 font-bold text-xs py-2 rounded shadow-sm hover:bg-green-50 order-btn">500g</button>
+                        <button onclick="updateQty(${id}, 1);" class="w-1/2 bg-white border border-green-500 text-green-600 font-bold text-xs py-2 rounded shadow-sm hover:bg-green-50 order-btn">1Kg</button>
+                    </div>
+                `;
+            }
+            return `<button onclick="updateQty(${id}, ${step});" class="w-full bg-white border border-green-500 text-green-600 font-bold text-sm py-2 rounded shadow-sm hover:bg-green-50 uppercase order-btn">ADD</button>`;
+        } else {
+            return `
+                <div class="flex items-center bg-green-500 rounded-lg text-white w-full justify-between px-2 py-1 shadow-md">
+                    <button onclick="updateQty(${id}, -${step});" class="font-bold p-1 hover:bg-green-600 rounded-l-lg order-btn">-</button>
+                    <span class="text-sm font-bold">${formatQtyDisplay(qty, product.unit)}</span>
+                    <button onclick="updateQty(${id}, ${step});" class="font-bold p-1 hover:bg-green-600 rounded-r-lg order-btn">+</button>
+                </div>
+            `;
+        }
+    }
+
+    function updateQty(id, change) {
+        const product = getProduct(id);
+        if (!product) return;
+        if (!cart[id]) cart[id] = { qty: 0, cost: 0 };
+        
+        let currentQty = cart[id].qty;
+        // Use precision to handle floating point math (e.g., 0.5 + 0.5)
+        let newQty = (parseFloat(currentQty) * 10 + parseFloat(change) * 10) / 10; 
+        newQty = parseFloat(newQty.toFixed(1)); 
+
+        if (newQty <= 0) {
+            delete cart[id];
+        } else {
+            cart[id].qty = newQty;
+            cart[id].cost = calculateItemCost(id, newQty);
+        }
+        
+        const cartToStore = {};
+        Object.keys(cart).forEach(key => cartToStore[key] = cart[key].qty);
+        localStorage.setItem('cart', JSON.stringify(cartToStore));
+
+        const controlsDiv = document.getElementById(`controls-${id}`);
+        if (controlsDiv) controlsDiv.innerHTML = getAddButtonHtml(id);
+        updateMiniCart();
+    }
+
+    function updateMiniCart() {
+        let uniqueItems = 0;
+        let totalCost = 0;
+        Object.keys(cart).forEach(id => {
+            const item = cart[id];
+            if (item.qty > 0) {
+                totalCost += item.cost;
+                uniqueItems += 1; 
+            }
+        });
+        const cartCountBadgeEl = document.getElementById('cartCountBadge');
+        const miniBadgeEl = document.getElementById('mini-cart-badge');
+        const miniBarEl = document.getElementById('mini-cart-bar');
+
+        if (cartCountBadgeEl) {
+            cartCountBadgeEl.innerText = uniqueItems;
+            if (uniqueItems > 0) cartCountBadgeEl.classList.remove('hide');
+            else cartCountBadgeEl.classList.add('hide');
+        }
+        
+        // Update bottom nav cart badge
+        const bottomCartBadge = document.getElementById('bottomCartBadge');
+        if (bottomCartBadge) {
+            bottomCartBadge.innerText = uniqueItems;
+            if (uniqueItems > 0) bottomCartBadge.classList.remove('hide');
+            else bottomCartBadge.classList.add('hide');
+        }
+
+        if (uniqueItems > 0) {
+            if (miniBadgeEl) {
+                miniBadgeEl.innerText = uniqueItems;
+                miniBadgeEl.classList.remove('hide');
+            }
+            if (miniBarEl) {
+                const isHomeView = !document.getElementById('view-home').classList.contains('hide');
+                if (isHomeView) miniBarEl.classList.remove('hide'); else miniBarEl.classList.add('hide');
+                miniBarEl.title = `${uniqueItems} items — ₹${totalCost.toFixed(2)}`;
+            }
+        } else {
+            if (miniBadgeEl) miniBadgeEl.classList.add('hide');
+            if (miniBarEl) miniBarEl.classList.add('hide');
+        }
+    }
+
+    function renderCart() {
+        const container = document.getElementById('cart-items-container');
+        let html = '';
+        let subtotal = 0;
+
+        document.getElementById('cartCustName').innerText = localStorage.getItem('custName') || 'Name Not Set';
+        document.getElementById('cartCustAddress').innerText = localStorage.getItem('custAddress') || 'Address Not Set';
+        document.getElementById('cartCustPhone').innerText = 'Phone: ' + (localStorage.getItem('custPhone') || 'Not Set');
+
+        const orderedIds = Object.keys(cart).map(Number).sort((a, b) => a - b);
+
+        orderedIds.forEach(id => {
+            const p = getProduct(id);
+            const item = cart[id];
+            if(p && item.qty > 0) {
+                const qty = item.qty;
+                const cost = calculateItemCost(id, qty); 
+                subtotal += cost;
+                const step = (p.unit === 'Kg') ? 0.5 : 1;
+
+                html += `
+                    <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm mb-3">
+                        <div class="flex justify-between items-center">
+                            <div class="flex-1">
+                                <div class="font-bold text-gray-800 text-sm">${p.name}</div>
+                                <div class="text-xs text-green-700 font-bold italic">${p.teluguName}</div>
+                                <div class="text-xs text-gray-500">₹${p.price}/${p.unit}</div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="flex items-center bg-green-500 rounded-lg text-white font-bold text-sm">
+                                    <button onclick="updateQty(${p.id}, -${step}); renderCart();" class="px-3 py-1 rounded-l-lg hover:bg-green-600 order-btn">-</button>
+                                    <span class="px-3 py-1 bg-green-600">${formatQtyDisplay(qty, p.unit)}</span>
+                                    <button onclick="updateQty(${p.id}, ${step}); renderCart();" class="px-3 py-1 rounded-r-lg hover:bg-green-600 order-btn">+</button>
+                                </div>
+                                <div class="font-bold text-sm text-green-700 w-16 text-right">₹${cost.toFixed(2)}</div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
+                            <button onclick="removeItemFromCart(${p.id}); renderCart();" class="text-red-500 text-xs font-medium hover:text-red-700 flex items-center gap-1">
+                                <i class="fas fa-trash text-xs"></i> Remove
+                            </button>
+                            <button onclick="addToFavorites(${p.id})" class="text-gray-400 text-xs font-medium hover:text-red-500 flex items-center gap-1">
+                                <i class="fas fa-heart text-xs"></i> Save for later
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        if(html === '') {
+            html = '<div class="text-center text-gray-400 py-10 bg-white rounded-xl">Your cart is empty. Start adding items from the Home tab!</div>';
+            document.getElementById('confirmOrderSection').classList.add('hide');
+        } else {
+            document.getElementById('confirmOrderSection').classList.remove('hide');
+        }
+        
+        container.innerHTML = html;
+        document.getElementById('bill-subtotal').innerText = '₹' + subtotal.toFixed(2);
+        document.getElementById('bill-total').innerText = '₹' + (subtotal + DELIVERY_FEE).toFixed(2);
+
+        const minNoteEl = document.getElementById('minOrderNote');
+        if (minNoteEl) {
+            if (subtotal < MIN_ORDER) {
+                const diff = (MIN_ORDER - subtotal).toFixed(2);
+                minNoteEl.classList.remove('text-green-600');
+                minNoteEl.classList.add('text-yellow-700');
+                minNoteEl.innerText = `Orders below ₹${MIN_ORDER} will incur a delivery charge of ₹${DELIVERY_FEE}. Add ₹${diff} more for recommended minimum.`;
+            } else {
+                minNoteEl.classList.remove('text-yellow-700');
+                minNoteEl.classList.add('text-green-600');
+                minNoteEl.innerText = `Minimum order met. Delivery charge (if any) will be ₹${DELIVERY_FEE}.`;
+            }
+        }
+    }
+
+    // paymentMethod: 'COD' | 'ONLINE' ; paymentStatus: 'Pending' | 'Paid'
+    function sendToWhatsApp(paymentMethod = 'COD', paymentStatus = 'Pending') {
+        const name = localStorage.getItem('custName');
+        const address = localStorage.getItem('custAddress');
+        const phone = localStorage.getItem('custPhone');
+        
+        if(!name || !address || !phone) {
+            // Note: Using a custom modal is recommended instead of alert() for production apps.
+            // For simplicity in this single-file context, we'll keep the view navigation logic.
+            showCurrentView('details');
+            alert("⚠️ Please fill in your name, phone, and address first!"); 
+            return;
+        }
+        if (Object.keys(cart).length === 0) {
+            alert("🛒 Your cart is empty!");
+            showCurrentView('home');
+            return;
+        }
+
+        let total = 0;
+        let orderList = "";
+        let itemCounter = 1;
+        const orderedIds = Object.keys(cart).map(Number).sort((a, b) => a - b);
+
+        orderedIds.forEach(id => {
+            const p = getProduct(id);
+            const item = cart[id];
+            if(p && item.qty > 0) {
+                const cost = calculateItemCost(id, item.qty);
+                total += cost;
+                orderList += `${itemCounter}. ${p.name} (${formatQtyDisplay(item.qty, p.unit)}) - ₹${cost.toFixed(2)}\n`;
+                itemCounter++;
+            }
+        });
+
+        const grandTotal = total + DELIVERY_FEE;
+        
+        let whatsappMessage = `*Nekta Order (Kothagudem)*\n\n`;
+
+        // If subtotal is below MIN_ORDER, inform customer about delivery charge and ask confirmation
+        if (total < MIN_ORDER) {
+            const shortfall = (MIN_ORDER - total).toFixed(2);
+            const proceed = confirm(`Your order subtotal is ₹${total.toFixed(2)}, which is below the recommended minimum of ₹${MIN_ORDER}.\n\nWe will still process the order but a delivery charge of ₹${DELIVERY_FEE} will apply.\n\nAdd ₹${shortfall} more to reach the recommended minimum, or press OK to continue with the delivery charge.`);
+            if (!proceed) {
+                showCurrentView('cart');
+                return;
+            }
+        } else {
+            const proceed = confirm(`Your order subtotal is ₹${total.toFixed(2)}. Delivery charge: ₹${DELIVERY_FEE}.\n\nPress OK to confirm and send the order via WhatsApp.`);
+            if (!proceed) {
+                showCurrentView('cart');
+                return;
+            }
+        }
+        whatsappMessage += `Name: *${name}*\nPhone: *${phone}*\nAddress: *${address}*\n\n`;
+        whatsappMessage += `*ORDER LIST:*\n${orderList}`;
+        whatsappMessage += `\n*Item Subtotal: ₹${total.toFixed(2)}*`;
+        whatsappMessage += `\nDelivery Fee: ₹${DELIVERY_FEE}`;
+        whatsappMessage += `\n*TOTAL PAYABLE: ₹${grandTotal.toFixed(2)}*`;
+        const deliveryTime = document.getElementById('deliveryTimeSlot')?.value || 'asap';
+        const timeSlots = {
+            asap: 'ASAP (30-60 mins)',
+            morning: 'Morning (8 AM - 12 PM)',
+            afternoon: 'Afternoon (12 PM - 4 PM)',
+            evening: 'Evening (4 PM - 8 PM)'
+        };
+        
+        whatsappMessage += `\n\n_Payment method: ${paymentMethod} (Status: ${paymentStatus})_`;
+        whatsappMessage += `\n_Delivery time: ${timeSlots[deliveryTime]}_`;
+        
+        // Save order to history and add loyalty points
+        const orderData = {
+            items: {},
+            total: grandTotal,
+            date: new Date().toISOString()
+        };
+        Object.keys(cart).forEach(id => {
+            orderData.items[id] = cart[id].qty;
+        });
+        orderHistory.push(orderData);
+        localStorage.setItem('orderHistory', JSON.stringify(orderHistory.slice(-50))); // Keep last 50 orders
+        
+        const pointsEarned = addLoyaltyPoints(grandTotal);
+
+        const whatsappMessageBase = whatsappMessage;
+        function openWhatsAppWithLocation(locLink) {
+            let whatsappMessageFinal = whatsappMessageBase;
+            if (locLink) {
+                whatsappMessageFinal += `\n\nLocation: ${locLink}`;
+            }
+            const whatsappUrl = `https://wa.me/${BUSINESS_PHONE}?text=${encodeURIComponent(whatsappMessageFinal)}`;
+            window.open(whatsappUrl, '_blank');
+            
+            // Start order tracking and clear cart
+            startOrderTracking();
+            cart = {};
+            localStorage.removeItem('cart');
+            updateMiniCart();
+            showNotification(`🎉 Order sent! You earned ${pointsEarned} loyalty points!`);
+            
+            // Redirect to home page after 2 seconds
+            setTimeout(() => {
+                showCurrentView('home');
+                showNotification('✅ Order received! Continue shopping...');
+            }, 2000);
+        }
+
+            // Ask the user if they want to share current location (recommended for delivery)
+            const shareLocation = confirm('Share your current location with the order? This helps delivery reach you faster.');
+            if (shareLocation && navigator.geolocation) {
+                const geoOptions = { enableHighAccuracy: false, timeout: 8000, maximumAge: 0 };
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+                        const mapsLink = `https://maps.google.com/?q=${lat},${lng}`;
+                        openWhatsAppWithLocation(mapsLink);
+                    },
+                    (err) => {
+                        // If location can't be retrieved, proceed without interrupting the user
+                        openWhatsAppWithLocation('');
+                    },
+                    geoOptions
+                );
+            } else {
+                openWhatsAppWithLocation('');
+            }
+    }
+
+    function openPaymentModal() {
+        const modal = document.getElementById('payment-modal');
+        const content = document.getElementById('payment-modal-content');
+        if (modal) {
+            modal.classList.remove('hide');
+            setTimeout(() => {
+                content.style.transform = 'scale(1)';
+                content.style.opacity = '1';
+            }, 10);
+            
+            // Add event listeners for payment method selection
+            setupPaymentSelection();
+        }
+    }
+    
+    function setupPaymentSelection() {
+        const paymentOptions = document.querySelectorAll('input[name="paymentMethod"]');
+        const paymentCards = document.querySelectorAll('.payment-card');
+        
+        paymentOptions.forEach((radio, index) => {
+            radio.addEventListener('change', function() {
+                // Remove selected state from all cards
+                paymentCards.forEach(card => {
+                    card.classList.remove('border-green-300', 'bg-green-50', 'shadow-md');
+                    card.classList.add('border-gray-200');
+                    
+                    const indicator = card.querySelector('.radio-indicator');
+                    const dot = card.querySelector('.radio-indicator div');
+                    indicator.classList.remove('border-green-500');
+                    indicator.classList.add('border-gray-300');
+                    dot.style.opacity = '0';
+                });
+                
+                // Add selected state to chosen card
+                if (this.checked) {
+                    const selectedCard = paymentCards[index];
+                    selectedCard.classList.remove('border-gray-200');
+                    selectedCard.classList.add('border-green-300', 'bg-green-50', 'shadow-md');
+                    
+                    const indicator = selectedCard.querySelector('.radio-indicator');
+                    const dot = selectedCard.querySelector('.radio-indicator div');
+                    indicator.classList.remove('border-gray-300');
+                    indicator.classList.add('border-green-500');
+                    dot.style.opacity = '1';
+                }
+            });
+            
+            // Also handle clicks on the card itself
+            paymentCards[index].addEventListener('click', function() {
+                radio.checked = true;
+                radio.dispatchEvent(new Event('change'));
+            });
+        });
+    }
+
+    function closePaymentModal() {
+        const modal = document.getElementById('payment-modal');
+        const content = document.getElementById('payment-modal-content');
+        if (modal) {
+            content.style.transform = 'scale(0.95)';
+            content.style.opacity = '0';
+            setTimeout(() => {
+                modal.classList.add('hide');
+            }, 200);
+        }
+    }
+
+    function confirmPaymentAndSend() {
+        // Read selected payment method
+        const methodEl = document.querySelector('input[name="paymentMethod"]:checked');
+        const method = methodEl ? methodEl.value : 'COD';
+
+        if (method === 'ONLINE') {
+            // Show UPI payment form
+            closePaymentModal();
+            showUPIPaymentModal();
+        } else {
+            // Cash on delivery
+            closePaymentModal();
+            sendToWhatsApp('COD', 'Pending');
+        }
+    }
+
+    function showUPIPaymentModal() {
+        const modal = document.getElementById('upi-payment-modal');
+        if (modal) modal.classList.remove('hide');
+        // Calculate total and display in modal
+        let cartTotal = 0;
+        Object.keys(cart).forEach(id => {
+            if (cart[id].qty > 0) cartTotal += cart[id].cost;
+        });
+        const grandTotal = cartTotal + DELIVERY_FEE;
+        document.getElementById('razorpay-amount').innerText = '₹' + grandTotal.toFixed(2);
+    }
+
+    function hideUPIPaymentModal() {
+        const modal = document.getElementById('upi-payment-modal');
+        if (modal) modal.classList.add('hide');
+    }
+
+    function initiateRazorpayPayment() {
+        // Calculate total
+        let cartTotal = 0;
+        Object.keys(cart).forEach(id => {
+            if (cart[id].qty > 0) cartTotal += cart[id].cost;
+        });
+        const grandTotal = cartTotal + DELIVERY_FEE;
+        const amountInPaisa = Math.round(grandTotal * 100); // Razorpay expects amount in paise
+
+        const custName = localStorage.getItem('custName');
+        const custPhone = localStorage.getItem('custPhone');
+
+        // Razorpay test key (replace with your live key in production)
+        const razorpayKey = 'rzp_test_1DP5mmOlF5G1ag'; // Test key - replace with live key
+        
+        const options = {
+            key: razorpayKey,
+            amount: amountInPaisa,
+            currency: 'INR',
+            name: 'Nekta - Kothagudem',
+            description: 'Order Payment',
+            prefill: {
+                name: custName || '',
+                contact: custPhone || '',
+                email: 'customer@nekta.local'
+            },
+            handler: function(response) {
+                // Payment successful
+                hideUPIPaymentModal();
+                sendToWhatsApp('ONLINE', 'Paid');
+            },
+            modal: {
+                ondismiss: function() {
+                    // User closed payment modal without paying
+                    alert('Payment cancelled. Please try again.');
+                }
+            },
+            theme: {
+                color: '#10B981'
+            }
+        };
+
+        const rzp = new Razorpay(options);
+        rzp.on('payment.failed', function(response) {
+            alert('Payment failed: ' + response.error.description + '\n\nPlease try again.');
+        });
+        rzp.open();
+    }
+
+    function cancelUPIPayment() {
+        hideUPIPaymentModal();
+        openPaymentModal(); // Go back to payment method choice
+    }
+    
+    // ===== ADMIN PANEL FUNCTIONS =====
+    
+    function adminTapCounter() {
+        adminTaps++;
+        if (adminTaps === 5) {
+            showNotification('🔐 Admin access unlocked!', 'info');
+            setTimeout(() => {
+                showAdminPanel();
+            }, 1000);
+            adminTaps = 0; // Reset counter
+        } else if (adminTaps >= 3) {
+            showNotification(`Tap ${5 - adminTaps} more times...`, 'info');
+        }
+        
+        // Reset counter after 3 seconds of no taps
+        setTimeout(() => {
+            adminTaps = 0;
+        }, 3000);
+    }
+    
+    function showAdminPanel() {
+        showCurrentView('admin');
+        loadAdminOrders();
+    }
+    
+    function checkAdminLogin() {
+        const password = document.getElementById('admin-password').value;
+        const correctPassword = 'nekta123'; // Change this to your desired password
+        
+        if (password === correctPassword) {
+            document.getElementById('admin-login').classList.add('hide');
+            document.getElementById('admin-dashboard').classList.remove('hide');
+            loadAdminOrders();
+            showNotification('Admin access granted!', 'success');
+        } else {
+            showNotification('Incorrect password!', 'error');
+        }
+    }
+    
+    function loadAdminOrders() {
+        const ordersList = document.getElementById('admin-orders-list');
+        const orderSelect = document.getElementById('order-select');
+        
+        if (orderHistory.length === 0) {
+            ordersList.innerHTML = '<p class="text-gray-500 text-center py-4">No orders yet</p>';
+            return;
+        }
+        
+        // Clear previous options
+        orderSelect.innerHTML = '<option value="">Select Order</option>';
+        
+        // Show recent orders
+        ordersList.innerHTML = orderHistory.slice(-5).reverse().map((order, index) => {
+            const orderNumber = orderHistory.length - index;
+            const orderDate = new Date(order.date).toLocaleString('en-IN');
+            const status = localStorage.getItem(`order_${orderNumber}_status`) || 'received';
+            const statusEmojis = {
+                received: '📦',
+                preparing: '👨🍳',
+                delivering: '🚚',
+                delivered: '✅'
+            };
+            
+            // Add to select dropdown
+            orderSelect.innerHTML += `<option value="${orderNumber}">Order #${orderNumber} - ₹${order.total.toFixed(2)}</option>`;
+            
+            return `
+                <div class="border border-gray-200 rounded-lg p-3 mb-2">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-bold">Order #${orderNumber}</div>
+                            <div class="text-sm text-gray-500">${orderDate}</div>
+                            <div class="text-sm font-medium text-green-600">₹${order.total.toFixed(2)}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-lg">${statusEmojis[status]}</div>
+                            <div class="text-xs text-gray-600 capitalize">${status}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    function updateOrderStatus() {
+        const orderNumber = document.getElementById('order-select').value;
+        const newStatus = document.getElementById('status-select').value;
+        
+        if (!orderNumber) {
+            showNotification('Please select an order!', 'warning');
+            return;
+        }
+        
+        // Save status
+        localStorage.setItem(`order_${orderNumber}_status`, newStatus);
+        
+        // Update customer's order tracker if they're viewing it
+        updateCustomerOrderTracker(newStatus);
+        
+        // Refresh admin view
+        loadAdminOrders();
+        
+        const statusNames = {
+            received: 'Order Received',
+            preparing: 'Preparing',
+            delivering: 'Out for Delivery',
+            delivered: 'Delivered'
+        };
+        
+        showNotification(`Order #${orderNumber} updated to: ${statusNames[newStatus]}`, 'success');
+    }
+    
+    function updateCustomerOrderTracker(status) {
+        const tracker = document.getElementById('orderStatusTracker');
+        if (!tracker || tracker.classList.contains('hide')) return;
+        
+        const status1 = document.getElementById('status1');
+        const status2 = document.getElementById('status2');
+        const status3 = document.getElementById('status3');
+        
+        // Reset all statuses
+        [status1, status2, status3].forEach(el => {
+            el.className = 'w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-gray-500 mb-1';
+            el.innerHTML = '<i class="fas fa-clock"></i>';
+        });
+        
+        // Update based on current status
+        if (status === 'received' || status === 'preparing' || status === 'delivering' || status === 'delivered') {
+            status1.className = 'w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white mb-1';
+            status1.innerHTML = '<i class="fas fa-check"></i>';
+        }
+        
+        if (status === 'preparing' || status === 'delivering' || status === 'delivered') {
+            status2.className = 'w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white mb-1';
+            status2.innerHTML = '<i class="fas fa-check"></i>';
+        }
+        
+        if (status === 'delivering' || status === 'delivered') {
+            status3.className = 'w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center text-white mb-1';
+            status3.innerHTML = '<i class="fas fa-truck"></i>';
+        }
+        
+        if (status === 'delivered') {
+            status3.className = 'w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white mb-1';
+            status3.innerHTML = '<i class="fas fa-check"></i>';
+            showNotification('🎉 Order delivered! Thank you!', 'success');
+        }
+    }
+    
+    // Remove individual item from cart
+    function removeItemFromCart(id) {
+        const product = getProduct(id);
+        const confirmRemove = confirm(`Remove ${product.name} from cart?`);
+        
+        if (confirmRemove) {
+            delete cart[id];
+            const cartToStore = {};
+            Object.keys(cart).forEach(key => cartToStore[key] = cart[key].qty);
+            localStorage.setItem('cart', JSON.stringify(cartToStore));
+            updateMiniCart();
+            showNotification(`${product.name} removed from cart`, 'warning');
+        }
+    }
+    
+    // Clear all items from cart
+    function clearAllCart() {
+        if (Object.keys(cart).length === 0) {
+            showNotification('Cart is already empty!', 'warning');
+            return;
+        }
+        
+        const confirmClear = confirm('Remove all items from cart?');
+        
+        if (confirmClear) {
+            cart = {};
+            localStorage.removeItem('cart');
+            updateMiniCart();
+            renderCart();
+            showNotification('Cart cleared successfully!', 'info');
+        }
+    }
+    
+    // Add to favorites from cart
+    function addToFavorites(id) {
+        if (!favorites.includes(id)) {
+            favorites.push(id);
+            localStorage.setItem('favorites', JSON.stringify(favorites));
+            updateFavCount();
+            showNotification('Saved to favorites!');
+        } else {
+            showNotification('Already in favorites!', 'warning');
+        }
+    }
+    
+    // ===== NEW UX FEATURES =====
+    
+    // Better Search with Suggestions
+    function showSearchSuggestions() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const suggestions = document.getElementById('searchSuggestions');
+        
+        if (query.length === 0) {
+            // Show popular items when no search
+            const popularProducts = popularItems.map(id => getProduct(id)).filter(p => p);
+            suggestions.innerHTML = popularProducts.map(p => 
+                `<div onclick="quickAddToCart(${p.id})" class="p-2 hover:bg-gray-100 cursor-pointer flex justify-between items-center border-b">
+                    <span class="text-sm">${p.name} - ₹${p.price}</span>
+                    <button class="bg-green-500 text-white px-2 py-1 rounded text-xs">Quick Add</button>
+                </div>`
+            ).join('');
+            suggestions.classList.remove('hide');
+        } else {
+            // Hide suggestions when typing, let normal search work
+            suggestions.classList.add('hide');
+        }
+    }
+    
+    function quickAddToCart(id) {
+        const product = getProduct(id);
+        const step = (product.unit === 'Kg') ? 0.5 : 1;
+        updateQty(id, step);
+        document.getElementById('searchSuggestions').classList.add('hide');
+        showNotification(`${product.name} added to cart!`);
+    }
+    
+    // Favorites System
+    function toggleFavorite(id) {
+        const product = getProduct(id);
+        if (favorites.includes(id)) {
+            favorites = favorites.filter(fav => fav !== id);
+            showNotification(`💔 ${product.name} removed from favorites`);
+        } else {
+            favorites.push(id);
+            showNotification(`❤️ ${product.name} added to favorites!`);
+        }
+        localStorage.setItem('favorites', JSON.stringify(favorites));
+        updateFavCount();
+        
+        // Update the heart button visually
+        const heartBtn = document.querySelector(`#product-card-${id} button`);
+        if (heartBtn) {
+            if (favorites.includes(id)) {
+                heartBtn.className = 'absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center bg-red-500 text-white shadow-sm hover:scale-110 transition-transform';
+            } else {
+                heartBtn.className = 'absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center bg-white text-gray-400 shadow-sm hover:scale-110 transition-transform';
+            }
+        }
+    }
+    
+    function showFavorites() {
+        if (favorites.length === 0) {
+            showNotification('No favorites yet! Heart items to add them.', 'info');
+            return;
+        }
+        activeCategory = 'FAVORITES';
+        renderFavoriteProducts();
+    }
+    
+    function renderFavoriteProducts() {
+        const grid = document.getElementById('product-grid');
+        const favoriteProducts = favorites.map(id => getProduct(id)).filter(p => p);
+        
+        grid.innerHTML = favoriteProducts.map(p => `
+            <div class="bg-white p-2 rounded-xl shadow-md border border-red-200 flex flex-col">
+                <div class="h-32 bg-gray-100 mb-2 rounded-lg flex items-center justify-center overflow-hidden">
+                    ${p.img ? `<img src="${p.img}" class="w-full h-full object-cover" alt="${p.name}">` : `<div class="image-placeholder w-full h-full">${p.name}</div>`}
+                </div>
+                <h3 class="font-bold text-gray-800 text-sm truncate flex items-center gap-1">
+                    <i class="fas fa-heart text-red-500"></i> ${p.name}
+                </h3>
+                <h4 class="text-xs text-green-700 font-bold italic">${p.teluguName}</h4>
+                <span class="text-sm text-gray-500 mt-1">₹${p.price}/${p.unit}</span>
+                <div class="mt-2 flex justify-between items-center">
+                    ${getAddButtonHtml(p.id)}
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // Recent Orders
+    function showRecentOrders() {
+        if (orderHistory.length === 0) {
+            showNotification('No recent orders yet!', 'info');
+            return;
+        }
+        
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4';
+        modal.innerHTML = `
+            <div class="bg-white rounded-xl w-full max-w-md p-5 max-h-96 overflow-y-auto">
+                <h3 class="text-lg font-bold mb-3 flex items-center gap-2">
+                    <i class="fas fa-history text-blue-600"></i> Recent Orders
+                </h3>
+                <div class="space-y-3">
+                    ${orderHistory.slice(-10).reverse().map((order, index) => {
+                        const orderDate = new Date(order.date);
+                        const dateStr = orderDate.toLocaleDateString('en-IN');
+                        const timeStr = orderDate.toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit'});
+                        const itemCount = Object.keys(order.items).length;
+                        const firstItems = Object.keys(order.items).slice(0, 2).map(id => {
+                            const product = getProduct(parseInt(id));
+                            return product ? product.name : 'Unknown Item';
+                        });
+                        
+                        return `
+                            <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div class="font-bold text-blue-800">Order #${orderHistory.length - index}</div>
+                                    <div class="text-xs text-gray-500">${dateStr} ${timeStr}</div>
+                                </div>
+                                <div class="text-sm text-gray-700 mb-2">
+                                    ${firstItems.join(', ')}${itemCount > 2 ? ` +${itemCount - 2} more` : ''}
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="font-bold text-green-600">₹${order.total.toFixed(2)}</span>
+                                    <button onclick="reorderSpecific(${orderHistory.length - 1 - index})" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700">
+                                        Reorder
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" class="w-full mt-4 bg-gray-200 text-gray-700 py-2 rounded-lg">Close</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    function reorderSpecific(orderIndex) {
+        const order = orderHistory[orderIndex];
+        if (!order) return;
+        
+        Object.keys(order.items).forEach(id => {
+            updateQty(parseInt(id), order.items[id]);
+        });
+        
+        document.querySelector('.fixed.inset-0').remove();
+        showNotification('Order added to cart!');
+    }
+    
+    // Shopping Lists
+    function showShoppingLists() {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4';
+        modal.innerHTML = `
+            <div class="bg-white rounded-xl w-full max-w-md p-5">
+                <h3 class="text-lg font-bold mb-3 flex items-center gap-2">
+                    <i class="fas fa-list text-purple-600"></i> Shopping Lists
+                </h3>
+                <div class="space-y-3">
+                    <button onclick="loadShoppingList('weekly')" class="w-full bg-purple-100 text-purple-700 p-3 rounded-lg text-left hover:bg-purple-200">
+                        <div class="font-bold">🛒 Weekly Groceries</div>
+                        <div class="text-sm">Essential vegetables & daily items</div>
+                    </button>
+                    <button onclick="loadShoppingList('party')" class="w-full bg-orange-100 text-orange-700 p-3 rounded-lg text-left hover:bg-orange-200">
+                        <div class="font-bold">🎉 Party Essentials</div>
+                        <div class="text-sm">Fruits, ice creams & cool drinks</div>
+                    </button>
+                    <button onclick="loadShoppingList('breakfast')" class="w-full bg-yellow-100 text-yellow-700 p-3 rounded-lg text-left hover:bg-yellow-200">
+                        <div class="font-bold">🌅 Breakfast Items</div>
+                        <div class="text-sm">Batters, eggs & fresh herbs</div>
+                    </button>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" class="w-full mt-4 bg-gray-200 text-gray-700 py-2 rounded-lg">Close</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    function loadShoppingList(listType) {
+        const items = shoppingLists[listType] || [];
+        items.forEach(id => {
+            const product = getProduct(id);
+            if (product) {
+                const step = (product.unit === 'Kg') ? 0.5 : 1;
+                updateQty(id, step);
+            }
+        });
+        document.querySelector('.fixed.inset-0').remove();
+        showNotification(`Added ${items.length} items from shopping list!`);
+    }
+    
+    // One-Click Reorder
+    function oneClickReorder() {
+        if (orderHistory.length === 0) {
+            showNotification('No previous orders to reorder!', 'info');
+            return;
+        }
+        const lastOrder = orderHistory[orderHistory.length - 1];
+        Object.keys(lastOrder.items).forEach(id => {
+            updateQty(parseInt(id), lastOrder.items[id]);
+        });
+        showNotification('Last order added to cart!');
+    }
+    
+    // Loyalty Points
+    function addLoyaltyPoints(orderTotal) {
+        const pointsEarned = Math.floor(orderTotal / 10); // 1 point per ₹10
+        loyaltyPoints += pointsEarned;
+        localStorage.setItem('loyaltyPoints', loyaltyPoints.toString());
+        updateLoyaltyDisplay();
+        return pointsEarned;
+    }
+    
+    function updateLoyaltyDisplay() {
+        const pointsEl = document.getElementById('loyaltyPoints');
+        if (pointsEl) pointsEl.innerText = loyaltyPoints;
+    }
+    
+    // Order Status Tracker
+    function startOrderTracking() {
+        const tracker = document.getElementById('orderStatusTracker');
+        tracker.classList.remove('hide');
+        
+        // Only show "Order Received" status - no automatic progression
+        // Real status updates should come from your delivery system
+    }
+    
+    // Save order as favorite
+    function saveAsFavoriteOrder() {
+        const cartItems = Object.keys(cart);
+        if (cartItems.length === 0) {
+            showNotification('Cart is empty!', 'warning');
+            return;
+        }
+        cartItems.forEach(id => {
+            if (!favorites.includes(parseInt(id))) {
+                favorites.push(parseInt(id));
+            }
+        });
+        localStorage.setItem('favorites', JSON.stringify(favorites));
+        updateFavCount();
+        showNotification('Cart items saved to favorites!');
+    }
+    
+    // Modern Notification system
+    function showNotification(message, type = 'success') {
+        const notification = document.createElement('div');
+        
+        // Different styles for different message types
+        const styles = {
+            success: 'bg-gradient-to-r from-green-500 to-green-600 text-white',
+            error: 'bg-gradient-to-r from-red-500 to-red-600 text-white',
+            warning: 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white',
+            info: 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+        };
+        
+        // Get icon for message type
+        const icons = {
+            success: '✓',
+            error: '✗',
+            warning: '⚠',
+            info: 'ℹ'
+        };
+        
+        notification.className = `fixed top-24 left-1/2 transform -translate-x-1/2 ${styles[type]} px-6 py-4 rounded-2xl shadow-2xl z-50 text-sm font-medium flex items-center gap-3 max-w-sm mx-4 backdrop-blur-sm border border-white border-opacity-20 transition-all duration-300 ease-out`;
+        
+        notification.innerHTML = `
+            <div class="w-6 h-6 bg-white bg-opacity-20 rounded-full flex items-center justify-center font-bold">
+                ${icons[type]}
+            </div>
+            <span class="flex-1">${message}</span>
+            <button onclick="this.parentElement.remove()" class="w-5 h-5 bg-white bg-opacity-20 rounded-full flex items-center justify-center hover:bg-opacity-30 transition-colors">
+                ×
+            </button>
+        `;
+        
+        // Add entrance animation
+        notification.style.transform = 'translate(-50%, -20px)';
+        notification.style.opacity = '0';
+        
+        document.body.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+            notification.style.transform = 'translate(-50%, 0)';
+            notification.style.opacity = '1';
+        }, 10);
+        
+        // Auto remove after 4 seconds
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.style.transform = 'translate(-50%, -20px)';
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }
+        }, 4000);
+    }
+    
+    // Update counters
+    function updateFavCount() {
+        const favCountEl = document.getElementById('favCount');
+        if (favCountEl) favCountEl.innerText = favorites.length;
+    }
+    
+    // Smart Floating Header
+    let lastScrollTop = 0;
+    let isScrolling = false;
+    
+    function initSmartHeader() {
+        const header = document.getElementById('floatingHeader');
+        let ticking = false;
+        
+        function updateHeader() {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            
+            if (scrollTop > lastScrollTop && scrollTop > 100) {
+                // Scrolling down - hide header
+                header.style.transform = 'translateY(-100%)';
+            } else {
+                // Scrolling up - show header
+                header.style.transform = 'translateY(0)';
+            }
+            
+            lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+            ticking = false;
+        }
+        
+        function requestTick() {
+            if (!ticking) {
+                requestAnimationFrame(updateHeader);
+                ticking = true;
+            }
+        }
+        
+        window.addEventListener('scroll', requestTick);
+    }
+    
+    // Initialize on load
+    function initializeUXFeatures() {
+        updateFavCount();
+        updateLoyaltyDisplay();
+        initSmartHeader();
+        
+        // Hide search suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#searchInput') && !e.target.closest('#searchSuggestions')) {
+                document.getElementById('searchSuggestions').classList.add('hide');
+            }
+        });
+    }
+</script>
+</body>
+</html>
